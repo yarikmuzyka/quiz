@@ -873,7 +873,7 @@ function buildTopicCards() {
   heroCard.innerHTML = `
     <div class="mock-glow"></div>
     <div class="mock-content">
-      <div class="mock-badge">🔥 KILLER FEATURE</div>
+      <div class="mock-badge">🔥 INTERVIEW MODE</div>
       <div class="mock-title">Mock Interview Mode</div>
       <div class="mock-desc">100 рандомних запитань з усіх ${Object.keys(TOPICS).length} тем · ${totalQuestions}+ загальний пул · симуляція реального технічного інтервʼю</div>
       <div class="mock-stats">
