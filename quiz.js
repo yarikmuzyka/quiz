@@ -861,6 +861,19 @@ function buildTopicCards() {
   const picker = document.getElementById('topicPicker');
   picker.innerHTML = '';
 
+  const logo = document.createElement('div');
+  logo.className = 'home-logo';
+  logo.setAttribute('role', 'img');
+  logo.setAttribute('aria-label', 'QA');
+  logo.innerHTML = `
+    <div class="gt4-logo" aria-hidden="true">
+      <span class="gt4-letter gt4-q">Q</span>
+      <span class="gt4-letter gt4-a">A</span>
+      <span class="gt4-speed-line"></span>
+    </div>
+  `;
+  picker.appendChild(logo);
+
   const title = document.createElement('div');
   title.className = 'picker-title';
   title.innerHTML = 'Обери <span class="accent">тему</span>';
