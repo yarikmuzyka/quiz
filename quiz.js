@@ -820,8 +820,11 @@ function shuffle(arr) {
   return a;
 }
 
+let wrongQuestions = [];
+
 function initQuiz(topicKey) {
   currentTopic = topicKey;
+  wrongQuestions = [];
   if (topicKey === 'mock') {
     // Mock interview: збираємо всі питання з усіх тем, перемішуємо і беремо 100
     // Кожному питанню додаємо мітку з теми для контексту
@@ -1081,6 +1084,7 @@ function selectAnswer(clickedBtn, q) {
     fb.textContent = '✓ Правильно! ' + q.e;
   } else {
     wrongCount++;
+    wrongQuestions.push(q);
     clickedBtn.classList.add('wrong');
     document.querySelectorAll('.option').forEach(b => {
       if (b.dataset.isCorrect === '1') b.classList.add('show-answer');
@@ -1122,6 +1126,33 @@ function showResults(finishedEarly) {
   else msg = 'Рекомендуємо детально вивчити тему.';
   document.getElementById('resultMsg').textContent = msg;
   saveStats(currentTopic, pct);
+
+  const reviewEl = document.getElementById('wrongReview');
+  const listEl = document.getElementById('wrongList');
+  listEl.innerHTML = '';
+
+  if (wrongQuestions.length > 0) {
+    wrongQuestions.forEach((q, i) => {
+      const correctAnswer = q.o[q.c];
+      const item = document.createElement('div');
+      item.className = 'wrong-item';
+      item.innerHTML = `
+        <div class="wrong-item-num">${i + 1}</div>
+        <div class="wrong-item-body">
+          <div class="wrong-item-q">${q.q}</div>
+          <div class="wrong-item-answer">
+            <span class="wrong-item-answer-label">Правильна відповідь:</span>
+            <span class="wrong-item-answer-text">${correctAnswer}</span>
+          </div>
+          <div class="wrong-item-exp">${q.e}</div>
+        </div>
+      `;
+      listEl.appendChild(item);
+    });
+    reviewEl.style.display = 'block';
+  } else {
+    reviewEl.style.display = 'none';
+  }
 }
 
 // ─── Event Listeners ──────────────────────────────
