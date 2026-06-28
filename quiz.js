@@ -865,10 +865,10 @@ function getStats() {
 
 function saveStats(topicKey, pct) {
   const stats = getStats();
-  if (!stats[topicKey]) stats[topicKey] = { best: 0, last: 0, count: 0 };
-  stats[topicKey].count++;
+  if (!stats[topicKey]) stats[topicKey] = { best: 0, last: null, count: 0 };
+  stats[topicKey].count = (stats[topicKey].count || 0) + 1;
   stats[topicKey].last = pct;
-  if (pct > stats[topicKey].best) stats[topicKey].best = pct;
+  if (pct > (stats[topicKey].best || 0)) stats[topicKey].best = pct;
   localStorage.setItem('qa_quiz_stats', JSON.stringify(stats));
 }
 
@@ -923,9 +923,9 @@ function buildTopicCards() {
 
   Object.entries(TOPICS).forEach(([key, topic]) => {
     const s = stats[key];
-    const best = s && s.count ? s.best : null;
-    const last = s && s.count ? s.last : null;
     const count = s ? (s.count || 0) : 0;
+    const best = count && s.best != null ? s.best : null;
+    const last = count && 'last' in s && s.last != null ? s.last : null;
     const barColor = best === null ? 'none' : best >= 80 ? 'good' : best >= 60 ? 'mid' : 'low';
     const row = document.createElement('div');
     row.className = 'dash-topic-row';
