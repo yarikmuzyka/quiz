@@ -1102,6 +1102,27 @@ function selectAnswer(clickedBtn, q) {
     : 'Переглянути результат <span>→</span>';
 }
 
+// ─── Medal SVG ────────────────────────────────────
+function getMedalSVG(type) {
+  const palettes = {
+    gold:   { outer: '#B8860B', mid: '#F59E0B', inner: '#FDE68A', outline: '#F59E0B', textMain: '#78350F', textSub: '#92400E' },
+    silver: { outer: '#6B7280', mid: '#9CA3AF', inner: '#E5E7EB', outline: '#9CA3AF', textMain: '#374151', textSub: '#4B5563' },
+    bronze: { outer: '#7C3A1A', mid: '#B45309', inner: '#FED7AA', outline: '#B45309', textMain: '#7C2D12', textSub: '#9A3412' },
+  };
+  const p = palettes[type];
+  return `<svg viewBox="0 0 150 165" xmlns="http://www.w3.org/2000/svg" width="120" height="132">
+    <rect x="57" y="0" width="36" height="44" rx="4" fill="#2563EB"/>
+    <rect x="63" y="0" width="10" height="44" rx="3" fill="#60A5FA" opacity="0.55"/>
+    <polygon points="75,44 122,71 122,126 75,152 28,126 28,71" fill="${p.outer}"/>
+    <polygon points="75,50 116,75 116,122 75,147 34,122 34,75" fill="${p.mid}"/>
+    <polygon points="75,60 108,80 108,118 75,140 42,118 42,80" fill="${p.inner}"/>
+    <polygon points="75,63 105,82 105,116 75,137 45,116 45,82" fill="none" stroke="${p.outline}" stroke-width="1.5"/>
+    <text x="75" y="108" text-anchor="middle" font-family="'Courier New',monospace" font-size="22" font-weight="700" fill="${p.textMain}">QA</text>
+    <text x="75" y="93" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="600" fill="${p.textSub}" letter-spacing="3">QUIZ</text>
+    <ellipse cx="60" cy="76" rx="14" ry="7" fill="#FFFFFF" opacity="0.2"/>
+  </svg>`;
+}
+
 // ─── Show Results ─────────────────────────────────
 function showResults(finishedEarly) {
   document.getElementById('quizScreen').style.display = 'none';
@@ -1111,6 +1132,21 @@ function showResults(finishedEarly) {
   const pct = done > 0 ? Math.round(correctCount / done * 100) : 0;
 
   document.getElementById('resultPercent').textContent = pct + '%';
+
+  const medalEl = document.getElementById('medalContainer');
+  if (pct >= 90) {
+    medalEl.innerHTML = getMedalSVG('gold');
+    medalEl.style.display = 'flex';
+  } else if (pct >= 80) {
+    medalEl.innerHTML = getMedalSVG('silver');
+    medalEl.style.display = 'flex';
+  } else if (pct >= 75) {
+    medalEl.innerHTML = getMedalSVG('bronze');
+    medalEl.style.display = 'flex';
+  } else {
+    medalEl.style.display = 'none';
+  }
+
   document.getElementById('resCorrect').textContent = correctCount;
   document.getElementById('resWrong').textContent = wrongCount;
   document.getElementById('resTotal').textContent = done;
