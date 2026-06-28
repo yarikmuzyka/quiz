@@ -896,7 +896,7 @@ function buildTopicCards() {
   const statsBlock = document.createElement('div');
   statsBlock.className = 'dash-stats-block';
   statsBlock.innerHTML = `
-    <div class="dash-stats-title">Статистика</div>
+    <div class="dash-stats-title">Загальна статистика</div>
     <div class="dash-stat">
       <div class="dash-stat-n">${overallBest !== null ? overallBest + '%' : '—'}</div>
       <div class="dash-stat-l">найкращий результат</div>
@@ -912,30 +912,31 @@ function buildTopicCards() {
   sidebarDivider.className = 'dash-divider';
   sidebar.appendChild(sidebarDivider);
 
-  const navTitle = document.createElement('div');
-  navTitle.className = 'dash-nav-title';
-  navTitle.textContent = 'Теми';
-  sidebar.appendChild(navTitle);
+  const resultsTitle = document.createElement('div');
+  resultsTitle.className = 'dash-nav-title';
+  resultsTitle.textContent = 'Результати по темах';
+  sidebar.appendChild(resultsTitle);
 
-  const topicNavList = document.createElement('div');
-  topicNavList.className = 'dash-nav-list';
-
-  const mockNavBtn = document.createElement('button');
-  mockNavBtn.className = 'dash-nav-item dash-nav-mock';
-  mockNavBtn.innerHTML = `<span class="dash-nav-dot"></span>Mock Interview`;
-  mockNavBtn.addEventListener('click', () => startQuiz('mock'));
-  topicNavList.appendChild(mockNavBtn);
+  const topicResultsList = document.createElement('div');
+  topicResultsList.className = 'dash-topic-results';
 
   Object.entries(TOPICS).forEach(([key, topic]) => {
     const s = stats[key];
-    const navBtn = document.createElement('button');
-    navBtn.className = 'dash-nav-item';
-    navBtn.innerHTML = `<span class="dash-nav-dot"></span>${topic.label}${s && s.best ? `<span class="dash-nav-best">${s.best}%</span>` : ''}`;
-    navBtn.addEventListener('click', () => startQuiz(key));
-    topicNavList.appendChild(navBtn);
+    const row = document.createElement('div');
+    row.className = 'dash-topic-row';
+    const pct = s && s.best ? s.best : null;
+    const barWidth = pct !== null ? pct : 0;
+    row.innerHTML = `
+      <div class="dash-topic-row-top">
+        <span class="dash-topic-name">${topic.label}</span>
+        <span class="dash-topic-pct ${pct !== null ? 'played' : 'unplayed'}">${pct !== null ? pct + '%' : '—'}</span>
+      </div>
+      <div class="dash-topic-bar"><div class="dash-topic-bar-fill" style="width:${barWidth}%"></div></div>
+    `;
+    topicResultsList.appendChild(row);
   });
 
-  sidebar.appendChild(topicNavList);
+  sidebar.appendChild(topicResultsList);
   dashboard.appendChild(sidebar);
 
   // — Main —
