@@ -521,10 +521,15 @@ html, body {
 .dash-topic-results {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 
-.dash-topic-row {}
+.dash-topic-row {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
 
 .dash-topic-row-top {
   display: flex;
@@ -535,21 +540,41 @@ html, body {
 
 .dash-topic-name {
   font-size: 0.78rem;
-  color: var(--text2);
+  font-weight: 500;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 120px;
 }
 
 .dash-topic-pct {
   font-size: 0.72rem;
   font-family: var(--mono);
-  font-weight: 600;
+  font-weight: 700;
   flex-shrink: 0;
 }
 .dash-topic-pct.played { color: var(--correct); }
-.dash-topic-pct.unplayed { color: var(--text3); }
+.dash-topic-pct.unplayed { color: var(--border2); }
+
+.dash-topic-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.dash-topic-last {
+  font-size: 0.68rem;
+  color: var(--text3);
+}
+
+.dash-topic-count {
+  font-size: 0.65rem;
+  font-family: var(--mono);
+  color: var(--text3);
+}
+.dash-topic-count.has { color: var(--accent); }
 
 .dash-topic-bar {
   height: 3px;
@@ -560,10 +585,13 @@ html, body {
 
 .dash-topic-bar-fill {
   height: 100%;
-  background: var(--accent);
   border-radius: 2px;
   transition: width 0.6s ease;
 }
+.dash-topic-bar-fill.good { background: #4ade80; }
+.dash-topic-bar-fill.mid  { background: #FCD34D; }
+.dash-topic-bar-fill.low  { background: #f87171; }
+.dash-topic-bar-fill.none { width: 0 !important; }
 
 .dash-main {
   padding: 2rem;

@@ -865,8 +865,9 @@ function getStats() {
 
 function saveStats(topicKey, pct) {
   const stats = getStats();
-  if (!stats[topicKey]) stats[topicKey] = { best: 0, count: 0 };
+  if (!stats[topicKey]) stats[topicKey] = { best: 0, last: 0, count: 0 };
   stats[topicKey].count++;
+  stats[topicKey].last = pct;
   if (pct > stats[topicKey].best) stats[topicKey].best = pct;
   localStorage.setItem('qa_quiz_stats', JSON.stringify(stats));
 }
@@ -922,16 +923,22 @@ function buildTopicCards() {
 
   Object.entries(TOPICS).forEach(([key, topic]) => {
     const s = stats[key];
+    const best = s && s.count ? s.best : null;
+    const last = s && s.count ? s.last : null;
+    const count = s ? (s.count || 0) : 0;
+    const barColor = best === null ? 'none' : best >= 80 ? 'good' : best >= 60 ? 'mid' : 'low';
     const row = document.createElement('div');
     row.className = 'dash-topic-row';
-    const pct = s && s.best ? s.best : null;
-    const barWidth = pct !== null ? pct : 0;
     row.innerHTML = `
       <div class="dash-topic-row-top">
         <span class="dash-topic-name">${topic.label}</span>
-        <span class="dash-topic-pct ${pct !== null ? 'played' : 'unplayed'}">${pct !== null ? pct + '%' : '—'}</span>
+        <span class="dash-topic-pct ${best !== null ? 'played' : 'unplayed'}">${best !== null ? best + '%' : '—'}</span>
       </div>
-      <div class="dash-topic-bar"><div class="dash-topic-bar-fill" style="width:${barWidth}%"></div></div>
+      <div class="dash-topic-meta">
+        <span class="dash-topic-last">${last !== null ? 'останній: ' + last + '%' : 'не зіграно'}</span>
+        <span class="dash-topic-count ${count ? 'has' : ''}">${count ? count + '× зіграно' : '0× зіграно'}</span>
+      </div>
+      <div class="dash-topic-bar"><div class="dash-topic-bar-fill ${barColor}" style="width:${best || 0}%"></div></div>
     `;
     topicResultsList.appendChild(row);
   });
