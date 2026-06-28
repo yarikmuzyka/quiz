@@ -711,25 +711,34 @@ html, body {
 /* ─── PICKER SUBTITLE (legacy, kept for safety) ─── */
 .picker-subtitle { display: none; }
 
+/* ─── Mobile stats bar (shown only on mobile) ─── */
+.dash-mobile-stats {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 700px) {
   .dash-layout { grid-template-columns: 1fr; }
-  .dash-sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border2);
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 1rem;
-    padding: 1rem;
-  }
-  .dash-logo { margin-bottom: 0; }
-  .dash-stats-block { flex-direction: row; gap: 1.5rem; margin-bottom: 0; }
-  .dash-nav-list { flex-direction: row; flex-wrap: wrap; }
-  .dash-nav-title, .dash-divider { display: none; }
-  .dash-main { padding: 1rem; }
-}
 
-@media (max-width: 700px) {
-  .mock-content { padding: 1.5rem; }
-  .mock-stats { font-size: 0.75rem; gap: 0.4rem; }
+  .dash-sidebar { display: none; }
+
+  .dash-mobile-stats {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border2);
+  }
+  .dash-mobile-stat { display: flex; align-items: baseline; gap: 0.4rem; }
+  .dash-mobile-stat-n {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+  .dash-mobile-stat-l { font-size: 0.72rem; color: var(--text2); }
+
+  .dash-main { padding: 1rem; }
 }

@@ -950,6 +950,21 @@ function buildTopicCards() {
   const main = document.createElement('div');
   main.className = 'dash-main';
 
+  // Mobile stats bar
+  const mobileStats = document.createElement('div');
+  mobileStats.className = 'dash-mobile-stats';
+  mobileStats.innerHTML = `
+    <div class="dash-mobile-stat">
+      <span class="dash-mobile-stat-n">${overallBest !== null ? overallBest + '%' : '—'}</span>
+      <span class="dash-mobile-stat-l">кращий результат</span>
+    </div>
+    <div class="dash-mobile-stat">
+      <span class="dash-mobile-stat-n">${totalSessions}</span>
+      <span class="dash-mobile-stat-l">сесій зіграно</span>
+    </div>
+  `;
+  main.appendChild(mobileStats);
+
   // Hero card
   const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
   const hero = document.createElement('button');
