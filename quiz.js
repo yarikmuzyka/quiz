@@ -857,74 +857,135 @@ function renderTopicPicker() {
   picker.style.display = 'flex';
 }
 
+function getStats() {
+  try {
+    return JSON.parse(localStorage.getItem('qa_quiz_stats') || '{}');
+  } catch { return {}; }
+}
+
+function saveStats(topicKey, pct) {
+  const stats = getStats();
+  if (!stats[topicKey]) stats[topicKey] = { best: 0, count: 0 };
+  stats[topicKey].count++;
+  if (pct > stats[topicKey].best) stats[topicKey].best = pct;
+  localStorage.setItem('qa_quiz_stats', JSON.stringify(stats));
+}
+
 function buildTopicCards() {
   const picker = document.getElementById('topicPicker');
   picker.innerHTML = '';
 
-  const logo = document.createElement('div');
-  logo.className = 'home-logo';
-  logo.setAttribute('role', 'img');
-  logo.setAttribute('aria-label', 'QA');
-  logo.innerHTML = `
-    <div class="gt4-logo" aria-hidden="true">
-      <span class="gt4-letter gt4-q">Q</span>
-      <span class="gt4-letter gt4-a">A</span>
-      <span class="gt4-speed-line"></span>
+  const stats = getStats();
+  const totalSessions = Object.values(stats).reduce((s, v) => s + (v.count || 0), 0);
+  const allBests = Object.values(stats).map(v => v.best || 0).filter(v => v > 0);
+  const overallBest = allBests.length ? Math.max(...allBests) : null;
+
+  // ─── Dashboard layout ───
+  const dashboard = document.createElement('div');
+  dashboard.className = 'dash-layout';
+
+  // — Sidebar —
+  const sidebar = document.createElement('div');
+  sidebar.className = 'dash-sidebar';
+
+  const sidebarLogo = document.createElement('div');
+  sidebarLogo.className = 'dash-logo';
+  sidebarLogo.innerHTML = `<span class="dash-logo-qa">QA</span><span class="dash-logo-dot">.</span><span class="dash-logo-quiz">quiz</span>`;
+  sidebar.appendChild(sidebarLogo);
+
+  const statsBlock = document.createElement('div');
+  statsBlock.className = 'dash-stats-block';
+  statsBlock.innerHTML = `
+    <div class="dash-stats-title">Статистика</div>
+    <div class="dash-stat">
+      <div class="dash-stat-n">${overallBest !== null ? overallBest + '%' : '—'}</div>
+      <div class="dash-stat-l">найкращий результат</div>
+    </div>
+    <div class="dash-stat">
+      <div class="dash-stat-n">${totalSessions}</div>
+      <div class="dash-stat-l">сесій зіграно</div>
     </div>
   `;
-  picker.appendChild(logo);
+  sidebar.appendChild(statsBlock);
 
-  const title = document.createElement('div');
-  title.className = 'picker-title';
-  title.innerHTML = 'Обери <span class="accent">тему</span>';
-  picker.appendChild(title);
+  const sidebarDivider = document.createElement('div');
+  sidebarDivider.className = 'dash-divider';
+  sidebar.appendChild(sidebarDivider);
 
-  // ─── Mock Interview Hero Card ───
-  const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
-  const heroCard = document.createElement('button');
-  heroCard.className = 'mock-interview-card';
-  heroCard.innerHTML = `
-    <div class="mock-glow"></div>
-    <div class="mock-content">
-      <div class="mock-badge">🔥 INTERVIEW MODE</div>
-      <div class="mock-title">Mock Interview Mode</div>
-      <div class="mock-desc">100 рандомних запитань з усіх ${Object.keys(TOPICS).length} тем · ${totalQuestions}+ загальний пул · симуляція реального технічного інтервʼю</div>
-      <div class="mock-stats">
-        <span class="mock-stat"><span class="mock-stat-n">100</span> запитань</span>
-        <span class="mock-stat-divider">·</span>
-        <span class="mock-stat"><span class="mock-stat-n">${Object.keys(TOPICS).length}</span> тем</span>
-        <span class="mock-stat-divider">·</span>
-        <span class="mock-stat">тема показується у відповіді</span>
-      </div>
-      <div class="mock-start">Розпочати інтервʼю →</div>
-    </div>
-  `;
-  heroCard.addEventListener('click', () => startQuiz('mock'));
-  picker.appendChild(heroCard);
+  const navTitle = document.createElement('div');
+  navTitle.className = 'dash-nav-title';
+  navTitle.textContent = 'Теми';
+  sidebar.appendChild(navTitle);
 
-  // ─── Topic Grid ───
-  const subTitle = document.createElement('div');
-  subTitle.className = 'picker-subtitle';
-  subTitle.innerHTML = 'або обери <span class="accent">окрему тему</span>';
-  picker.appendChild(subTitle);
+  const topicNavList = document.createElement('div');
+  topicNavList.className = 'dash-nav-list';
 
-  const grid = document.createElement('div');
-  grid.className = 'picker-grid';
+  const mockNavBtn = document.createElement('button');
+  mockNavBtn.className = 'dash-nav-item dash-nav-mock';
+  mockNavBtn.innerHTML = `<span class="dash-nav-dot"></span>Mock Interview`;
+  mockNavBtn.addEventListener('click', () => startQuiz('mock'));
+  topicNavList.appendChild(mockNavBtn);
 
   Object.entries(TOPICS).forEach(([key, topic]) => {
+    const s = stats[key];
+    const navBtn = document.createElement('button');
+    navBtn.className = 'dash-nav-item';
+    navBtn.innerHTML = `<span class="dash-nav-dot"></span>${topic.label}${s && s.best ? `<span class="dash-nav-best">${s.best}%</span>` : ''}`;
+    navBtn.addEventListener('click', () => startQuiz(key));
+    topicNavList.appendChild(navBtn);
+  });
+
+  sidebar.appendChild(topicNavList);
+  dashboard.appendChild(sidebar);
+
+  // — Main —
+  const main = document.createElement('div');
+  main.className = 'dash-main';
+
+  // Hero card
+  const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
+  const hero = document.createElement('button');
+  hero.className = 'dash-hero';
+  hero.innerHTML = `
+    <div class="dash-hero-left">
+      <div class="dash-hero-tag">Interview Mode</div>
+      <div class="dash-hero-title">Mock Interview</div>
+      <div class="dash-hero-desc">100 рандомних питань з усіх ${Object.keys(TOPICS).length} тем · ${totalQuestions}+ загальний пул</div>
+    </div>
+    <div class="dash-hero-btn">Почати →</div>
+  `;
+  hero.addEventListener('click', () => startQuiz('mock'));
+  main.appendChild(hero);
+
+  const mainSubtitle = document.createElement('div');
+  mainSubtitle.className = 'dash-main-subtitle';
+  mainSubtitle.textContent = 'або обери окрему тему';
+  main.appendChild(mainSubtitle);
+
+  // Topic cards grid
+  const grid = document.createElement('div');
+  grid.className = 'dash-grid';
+
+  const accentColors = ['#0EA5E9', '#FB923C', '#A78BFA', '#2DD4BF', '#F472B6', '#34D399'];
+
+  Object.entries(TOPICS).forEach(([key, topic], i) => {
+    const s = stats[key];
     const card = document.createElement('button');
-    card.className = 'topic-card';
+    card.className = 'dash-card';
+    card.style.setProperty('--card-accent', accentColors[i % accentColors.length]);
     card.innerHTML = `
-      <div class="topic-card-label">${topic.label}</div>
-      <div class="topic-card-badge">${topic.badge}</div>
-      <div class="topic-card-desc">${topic.desc}</div>
-      <div class="topic-card-start">Почати →</div>
+      <div class="dash-card-title">${topic.label}</div>
+      <div class="dash-card-sub">${topic.badge}</div>
+      ${s && s.best ? `<div class="dash-card-best">Кращий: ${s.best}%</div>` : ''}
+      <div class="dash-card-arrow">Почати →</div>
     `;
     card.addEventListener('click', () => startQuiz(key));
     grid.appendChild(card);
   });
 
-  picker.appendChild(grid);
+  main.appendChild(grid);
+  dashboard.appendChild(main);
+  picker.appendChild(dashboard);
 }
 
 // ─── Start Quiz ───────────────────────────────────
@@ -1037,6 +1098,7 @@ function showResults(finishedEarly) {
   else if (pct >= 40) msg = 'Варто переглянути документацію.';
   else msg = 'Рекомендуємо детально вивчити тему.';
   document.getElementById('resultMsg').textContent = msg;
+  saveStats(currentTopic, pct);
 }
 
 // ─── Event Listeners ──────────────────────────────
@@ -1050,10 +1112,11 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 });
 
 document.getElementById('restartBtn').addEventListener('click', () => {
-  // go back to topic picker
   document.getElementById('resultsScreen').style.display = 'none';
   document.getElementById('headerMeta').style.display = 'none';
   document.getElementById('logoTopic').style.display = 'none';
+  buildTopicCards();
+  renderTopicPicker();
   document.getElementById('startScreen').style.display = 'flex';
 });
 
