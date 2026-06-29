@@ -1098,10 +1098,27 @@ function getMedalSVG(type) {
   </svg>`;
 }
 
+function goHome() {
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'none';
+  document.getElementById('headerMeta').style.display = 'none';
+  document.getElementById('logoTopic').style.display = 'none';
+  const finishBtn = document.getElementById('finishBtn');
+  finishBtn.textContent = 'Фініш';
+  finishBtn.onclick = null;
+  buildTopicCards();
+  renderTopicPicker();
+  document.getElementById('startScreen').style.display = 'flex';
+}
+
 // ─── Show Results ─────────────────────────────────
 function showResults(finishedEarly) {
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('resultsScreen').style.display = 'flex';
+
+  const finishBtn = document.getElementById('finishBtn');
+  finishBtn.textContent = '← Головна';
+  finishBtn.onclick = goHome;
 
   const done = finishedEarly ? current : current + 1;
   const pct = done > 0 ? Math.round(correctCount / done * 100) : 0;
@@ -1176,14 +1193,7 @@ document.getElementById('finishBtn').addEventListener('click', () => {
   showResults(!answered);
 });
 
-document.getElementById('restartBtn').addEventListener('click', () => {
-  document.getElementById('resultsScreen').style.display = 'none';
-  document.getElementById('headerMeta').style.display = 'none';
-  document.getElementById('logoTopic').style.display = 'none';
-  buildTopicCards();
-  renderTopicPicker();
-  document.getElementById('startScreen').style.display = 'flex';
-});
+document.getElementById('restartBtn').addEventListener('click', goHome);
 
 // ─── Feedback Modal ───────────────────────────────
 (function () {
