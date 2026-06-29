@@ -822,21 +822,20 @@ function shuffle(arr) {
 
 let wrongQuestions = [];
 
-function initQuiz(topicKey) {
+function initQuiz(topicKey, count) {
   currentTopic = topicKey;
   wrongQuestions = [];
   if (topicKey === 'mock') {
-    // Mock interview: збираємо всі питання з усіх тем, перемішуємо і беремо 100
-    // Кожному питанню додаємо мітку з теми для контексту
     const allQuestions = [];
     Object.entries(TOPICS).forEach(([key, topic]) => {
       topic.bank.forEach(q => {
         allQuestions.push({ ...q, _topic: topic.label });
       });
     });
-    questions = shuffle(allQuestions).slice(0, 100);
+    questions = shuffle(allQuestions).slice(0, count || 100);
   } else {
-    questions = shuffle(TOPICS[topicKey].bank);
+    const bank = shuffle(TOPICS[topicKey].bank);
+    questions = count ? bank.slice(0, Math.min(count, bank.length)) : bank;
   }
   current = 0; correctCount = 0; wrongCount = 0; answered = false;
 }
@@ -928,7 +927,7 @@ function buildTopicCards() {
     </div>
     <div class="dash-hero-btn">Почати →</div>
   `;
-  hero.addEventListener('click', () => startQuiz('mock'));
+  hero.addEventListener('click', () => openCountModal('mock'));
   main.appendChild(hero);
 
   const mainSubtitle = document.createElement('div');
@@ -957,7 +956,7 @@ function buildTopicCards() {
         <span class="dash-card-arrow">Старт →</span>
       </div>
     `;
-    card.addEventListener('click', () => startQuiz(key));
+    card.addEventListener('click', () => openCountModal(key));
     grid.appendChild(card);
   });
 
@@ -967,19 +966,43 @@ function buildTopicCards() {
 }
 
 // ─── Start Quiz ───────────────────────────────────
-function startQuiz(topicKey) {
-  initQuiz(topicKey);
+function startQuiz(topicKey, count) {
+  initQuiz(topicKey, count);
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'block';
   document.getElementById('headerMeta').style.display = 'flex';
 
-  // update logo subtitle
   const label = topicKey === 'mock' ? '🔥 Mock Interview' : TOPICS[topicKey].label;
   document.getElementById('logoTopic').textContent = label;
   document.getElementById('logoTopic').style.display = 'inline';
 
   renderQuestion();
 }
+
+// ─── Count Picker Modal ───────────────────────────
+let _pendingTopic = null;
+
+function openCountModal(topicKey) {
+  _pendingTopic = topicKey;
+  const title = topicKey === 'mock' ? 'Mock Interview' : TOPICS[topicKey].label;
+  document.getElementById('countModalTitle').textContent = title + ' — кількість питань';
+  document.getElementById('countModal').style.display = 'flex';
+}
+
+document.getElementById('countModalClose').addEventListener('click', () => {
+  document.getElementById('countModal').style.display = 'none';
+});
+document.getElementById('countModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('countModal'))
+    document.getElementById('countModal').style.display = 'none';
+});
+document.querySelectorAll('.count-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = parseInt(btn.dataset.n);
+    document.getElementById('countModal').style.display = 'none';
+    startQuiz(_pendingTopic, n);
+  });
+});
 
 // ─── Render Question ──────────────────────────────
 function renderQuestion() {
