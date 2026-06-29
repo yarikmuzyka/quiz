@@ -415,18 +415,19 @@ html, body {
 
 /* ─── FEEDBACK BUTTON ─── */
 .feedback-btn {
-  padding: 0.3rem 0.85rem;
-  border: 1px solid #475569;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--header-muted);
+  padding: 0.3rem 0.9rem;
+  border: none;
+  border-radius: 20px;
+  background: #0F172A;
+  color: #7DD3FC;
   font-family: var(--sans);
   font-size: 0.78rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
   margin-left: auto;
+  letter-spacing: 0.01em;
 }
-.feedback-btn:hover { border-color: #7DD3FC; color: #7DD3FC; }
+.feedback-btn:hover { background: #020617; color: #BAE6FD; }
 
 /* ─── MODAL ─── */
 .modal-overlay {
