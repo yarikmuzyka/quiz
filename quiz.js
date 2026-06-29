@@ -883,90 +883,38 @@ function buildTopicCards() {
   const totalSessions = Object.values(stats).reduce((s, v) => s + (v.count || 0), 0);
   const allBests = Object.values(stats).map(v => v.best || 0).filter(v => v > 0);
   const overallBest = allBests.length ? Math.max(...allBests) : null;
+  const playedTopics = Object.values(stats).filter(v => v.count > 0).length;
+  const totalTopics = Object.keys(TOPICS).length;
 
-  // ─── Dashboard layout ───
-  const dashboard = document.createElement('div');
-  dashboard.className = 'dash-layout';
+  const wrapper = document.createElement('div');
+  wrapper.className = 'dash-wrapper';
 
-  // — Sidebar —
-  const sidebar = document.createElement('div');
-  sidebar.className = 'dash-sidebar';
-
-  const sidebarLogo = document.createElement('div');
-  sidebarLogo.className = 'dash-logo';
-  sidebarLogo.innerHTML = `<span class="dash-logo-qa">QA</span><span class="dash-logo-dot">.</span><span class="dash-logo-quiz">quiz</span>`;
-  sidebar.appendChild(sidebarLogo);
-
-  const statsBlock = document.createElement('div');
-  statsBlock.className = 'dash-stats-block';
-  statsBlock.innerHTML = `
-    <div class="dash-stats-title">Загальна статистика</div>
-    <div class="dash-stat">
-      <div class="dash-stat-n">${overallBest !== null ? overallBest + '%' : '—'}</div>
-      <div class="dash-stat-l">найкращий результат</div>
-    </div>
-    <div class="dash-stat">
-      <div class="dash-stat-n">${totalSessions}</div>
-      <div class="dash-stat-l">сесій зіграно</div>
+  // ─── Stats top bar ───
+  const topBar = document.createElement('div');
+  topBar.className = 'dash-topbar';
+  topBar.innerHTML = `
+    <div class="dash-topbar-stats">
+      <div class="dash-topbar-stat">
+        <span class="dash-topbar-n">${overallBest !== null ? overallBest + '%' : '—'}</span>
+        <span class="dash-topbar-l">найкращий результат</span>
+      </div>
+      <div class="dash-topbar-divider"></div>
+      <div class="dash-topbar-stat">
+        <span class="dash-topbar-n">${totalSessions}</span>
+        <span class="dash-topbar-l">сесій зіграно</span>
+      </div>
+      <div class="dash-topbar-divider"></div>
+      <div class="dash-topbar-stat">
+        <span class="dash-topbar-n">${playedTopics}/${totalTopics}</span>
+        <span class="dash-topbar-l">тем пройдено</span>
+      </div>
     </div>
   `;
-  sidebar.appendChild(statsBlock);
+  wrapper.appendChild(topBar);
 
-  const sidebarDivider = document.createElement('div');
-  sidebarDivider.className = 'dash-divider';
-  sidebar.appendChild(sidebarDivider);
-
-  const resultsTitle = document.createElement('div');
-  resultsTitle.className = 'dash-nav-title';
-  resultsTitle.textContent = 'Результати по темах';
-  sidebar.appendChild(resultsTitle);
-
-  const topicResultsList = document.createElement('div');
-  topicResultsList.className = 'dash-topic-results';
-
-  Object.entries(TOPICS).forEach(([key, topic]) => {
-    const s = stats[key];
-    const count = s ? (s.count || 0) : 0;
-    const best = count && s.best != null ? s.best : null;
-    const last = count && 'last' in s && s.last != null ? s.last : null;
-    const barColor = best === null ? 'none' : best >= 80 ? 'good' : best >= 60 ? 'mid' : 'low';
-    const row = document.createElement('div');
-    row.className = 'dash-topic-row';
-    row.innerHTML = `
-      <div class="dash-topic-row-top">
-        <span class="dash-topic-name">${topic.label}</span>
-        <span class="dash-topic-pct ${best !== null ? 'played' : 'unplayed'}">${best !== null ? best + '%' : '—'}</span>
-      </div>
-      <div class="dash-topic-meta">
-        <span class="dash-topic-last">${last !== null ? 'останній: ' + last + '%' : 'не зіграно'}</span>
-        <span class="dash-topic-count ${count ? 'has' : ''}">${count ? count + '× зіграно' : '0× зіграно'}</span>
-      </div>
-      <div class="dash-topic-bar"><div class="dash-topic-bar-fill ${barColor}" style="width:${best || 0}%"></div></div>
-    `;
-    topicResultsList.appendChild(row);
-  });
-
-  sidebar.appendChild(topicResultsList);
-  dashboard.appendChild(sidebar);
-
-  // — Main —
+  // ─── Main content ───
   const main = document.createElement('div');
   main.className = 'dash-main';
-
-  // Mobile stats bar
-  const mobileStats = document.createElement('div');
-  mobileStats.className = 'dash-mobile-stats';
-  mobileStats.innerHTML = `
-    <div class="dash-mobile-stat">
-      <span class="dash-mobile-stat-n">${overallBest !== null ? overallBest + '%' : '—'}</span>
-      <span class="dash-mobile-stat-l">кращий результат</span>
-    </div>
-    <div class="dash-mobile-stat">
-      <span class="dash-mobile-stat-n">${totalSessions}</span>
-      <span class="dash-mobile-stat-l">сесій зіграно</span>
-    </div>
-  `;
-  main.appendChild(mobileStats);
 
   // Hero card
   const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
@@ -976,7 +924,7 @@ function buildTopicCards() {
     <div class="dash-hero-left">
       <div class="dash-hero-tag">Interview Mode</div>
       <div class="dash-hero-title">Mock Interview</div>
-      <div class="dash-hero-desc">100 рандомних питань з усіх ${Object.keys(TOPICS).length} тем · ${totalQuestions}+ загальний пул</div>
+      <div class="dash-hero-desc">100 рандомних питань з усіх ${totalTopics} тем · ${totalQuestions}+ загальний пул</div>
     </div>
     <div class="dash-hero-btn">Почати →</div>
   `;
@@ -992,29 +940,30 @@ function buildTopicCards() {
   const grid = document.createElement('div');
   grid.className = 'dash-grid';
 
-  const accentColors = ['#0EA5E9', '#FB923C', '#A78BFA', '#2DD4BF', '#F472B6', '#34D399'];
+  const accentColors = ['#0EA5E9', '#FB923C', '#A78BFA', '#2DD4BF', '#F472B6', '#34D399', '#F59E0B', '#64748B'];
 
   Object.entries(TOPICS).forEach(([key, topic], i) => {
     const s = stats[key];
+    const count = s ? (s.count || 0) : 0;
+    const best = count && s && s.best != null ? s.best : null;
     const card = document.createElement('button');
     card.className = 'dash-card';
     card.style.setProperty('--card-accent', accentColors[i % accentColors.length]);
-    const pct = s && s.best != null ? s.best : null;
     card.innerHTML = `
-      <div class="dash-card-info">
-        <div class="dash-card-title">${topic.label}</div>
-        <div class="dash-card-sub">${topic.badge}</div>
+      <div class="dash-card-title">${topic.label}</div>
+      <div class="dash-card-sub">${topic.badge}</div>
+      <div class="dash-card-footer">
+        <span class="dash-card-pct ${best !== null ? 'played' : 'unplayed'}">${best !== null ? best + '%' : '—'}</span>
+        <span class="dash-card-arrow">Старт →</span>
       </div>
-      <div class="dash-card-pct ${pct !== null ? '' : 'unplayed'}">${pct !== null ? pct + '%' : '—'}</div>
-      <div class="dash-card-arrow">→</div>
     `;
     card.addEventListener('click', () => startQuiz(key));
     grid.appendChild(card);
   });
 
   main.appendChild(grid);
-  dashboard.appendChild(main);
-  picker.appendChild(dashboard);
+  wrapper.appendChild(main);
+  picker.appendChild(wrapper);
 }
 
 // ─── Start Quiz ───────────────────────────────────
