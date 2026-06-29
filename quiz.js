@@ -999,11 +999,14 @@ function buildTopicCards() {
     const card = document.createElement('button');
     card.className = 'dash-card';
     card.style.setProperty('--card-accent', accentColors[i % accentColors.length]);
+    const pct = s && s.best != null ? s.best : null;
     card.innerHTML = `
-      <div class="dash-card-title">${topic.label}</div>
-      <div class="dash-card-sub">${topic.badge}</div>
-      ${s && s.best ? `<div class="dash-card-best">Кращий: ${s.best}%</div>` : ''}
-      <div class="dash-card-arrow">Почати →</div>
+      <div class="dash-card-info">
+        <div class="dash-card-title">${topic.label}</div>
+        <div class="dash-card-sub">${topic.badge}</div>
+      </div>
+      <div class="dash-card-pct ${pct !== null ? '' : 'unplayed'}">${pct !== null ? pct + '%' : '—'}</div>
+      <div class="dash-card-arrow">→</div>
     `;
     card.addEventListener('click', () => startQuiz(key));
     grid.appendChild(card);
