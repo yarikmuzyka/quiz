@@ -413,6 +413,140 @@ html, body {
 .total-card .stat-n { color: var(--accent2); }
 .skip-card .stat-n { color: var(--text3); }
 
+/* ─── FEEDBACK BUTTON ─── */
+.feedback-btn {
+  padding: 0.3rem 0.85rem;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--header-muted);
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  margin-left: auto;
+}
+.feedback-btn:hover { border-color: #7DD3FC; color: #7DD3FC; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 420px;
+  animation: modal-in 0.2s ease;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem 0;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.modal-close:hover { color: var(--text); }
+
+.modal-body {
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text2);
+}
+.modal-label-opt { font-weight: 400; color: var(--text3); }
+
+.stars {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.star {
+  font-size: 2rem;
+  color: var(--border2);
+  cursor: pointer;
+  transition: color 0.1s, transform 0.1s;
+  line-height: 1;
+  user-select: none;
+}
+.star:hover { transform: scale(1.15); }
+.star.active { color: #F59E0B; }
+
+.modal-textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.875rem;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.modal-textarea:focus { border-color: var(--accent); }
+.modal-textarea::placeholder { color: var(--text3); }
+
+.modal-footer {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.modal-submit {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--header-bg);
+  color: var(--header-text);
+  border: none;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.modal-submit:hover { background: #0F172A; }
+.modal-submit:disabled { opacity: 0.5; cursor: default; }
+
 /* ─── MEDAL ─── */
 .medal-container {
   justify-content: center;

@@ -1210,6 +1210,45 @@ document.getElementById('restartBtn').addEventListener('click', () => {
   document.getElementById('startScreen').style.display = 'flex';
 });
 
+// ─── Feedback Modal ───────────────────────────────
+(function () {
+  const modal   = document.getElementById('feedbackModal');
+  const openBtn = document.getElementById('feedbackOpenBtn');
+  const closeBtn= document.getElementById('feedbackCloseBtn');
+  const stars   = document.querySelectorAll('#starsContainer .star');
+  const textarea= document.getElementById('feedbackText');
+  const submit  = document.getElementById('feedbackSubmitBtn');
+  let rating = 0;
+
+  function openModal() { modal.style.display = 'flex'; }
+  function closeModal() { modal.style.display = 'none'; }
+
+  openBtn.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  function setStars(n) {
+    stars.forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.v) <= n);
+    });
+    rating = n;
+  }
+
+  stars.forEach(s => {
+    s.addEventListener('mouseenter', () => setStars(parseInt(s.dataset.v)));
+    s.addEventListener('click',      () => setStars(parseInt(s.dataset.v)));
+  });
+  document.getElementById('starsContainer').addEventListener('mouseleave', () => setStars(rating));
+
+  submit.addEventListener('click', () => {
+    const stars_label = rating ? `${rating}/5 зірок` : 'без оцінки';
+    const comment = textarea.value.trim();
+    const body = encodeURIComponent(`Оцінка: ${stars_label}\n\n${comment || '(без коментаря)'}`);
+    window.location.href = `mailto:y.myzuka@gmail.com?subject=${encodeURIComponent('QA Quiz — відгук')}&body=${body}`;
+    closeModal();
+  });
+})();
+
 // ─── Init ─────────────────────────────────────────
 buildTopicCards();
 renderTopicPicker();

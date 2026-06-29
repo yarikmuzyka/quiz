@@ -21,6 +21,8 @@
         <span class="logo-bracket">]</span>
         <span class="logo-topic-sep" id="logoTopic" style="display:none"></span>
       </div>
+      <button class="feedback-btn" id="feedbackOpenBtn">Відгук</button>
+
       <div class="header-meta" id="headerMeta" style="display:none">
         <span class="meta-item" id="metaCounter">1 / 100</span>
         <span class="meta-sep">//</span>
@@ -73,6 +75,31 @@
           <div class="wrong-review-title">Помилкові питання</div>
           <div id="wrongList"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK MODAL -->
+  <div class="modal-overlay" id="feedbackModal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Залишити відгук</div>
+        <button class="modal-close" id="feedbackCloseBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-label">Як тобі квіз?</div>
+        <div class="stars" id="starsContainer">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <div class="modal-label">Коментар <span class="modal-label-opt">(необовʼязково)</span></div>
+        <textarea class="modal-textarea" id="feedbackText" placeholder="Що сподобалось, що варто покращити..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="feedbackSubmitBtn">Надіслати →</button>
       </div>
     </div>
   </div>
