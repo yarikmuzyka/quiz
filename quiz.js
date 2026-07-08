@@ -828,13 +828,27 @@ function initQuiz(topicKey, count) {
   if (topicKey === 'mock') {
     const allQuestions = [];
     Object.entries(TOPICS).forEach(([key, topic]) => {
-      topic.bank.forEach(q => {
-        allQuestions.push({ ...q, _topic: topic.label });
+      topic.bank.forEach((q, idx) => {
+        allQuestions.push({ ...q, _topic: topic.label, _topicKey: key, _idx: idx });
       });
     });
     questions = shuffle(allQuestions).slice(0, count || 100);
+  } else if (topicKey === 'mistakes') {
+    const mistakes = getMistakes();
+    const allQuestions = [];
+    Object.entries(mistakes).forEach(([key, idxMap]) => {
+      const topic = TOPICS[key];
+      if (!topic) return;
+      Object.keys(idxMap).forEach(idxStr => {
+        const idx = parseInt(idxStr, 10);
+        const q = topic.bank[idx];
+        if (q) allQuestions.push({ ...q, _topic: topic.label, _topicKey: key, _idx: idx });
+      });
+    });
+    questions = shuffle(allQuestions);
   } else {
-    const bank = shuffle(TOPICS[topicKey].bank);
+    const bankWithIdx = TOPICS[topicKey].bank.map((q, idx) => ({ ...q, _topicKey: topicKey, _idx: idx }));
+    const bank = shuffle(bankWithIdx);
     questions = count ? bank.slice(0, Math.min(count, bank.length)) : bank;
   }
   current = 0; correctCount = 0; wrongCount = 0; answered = false;
@@ -874,6 +888,40 @@ function saveStats(topicKey, pct) {
   localStorage.setItem('qa_quiz_stats', JSON.stringify(stats));
 }
 
+// ─── Mistake bank (spaced repetition) ──────────────
+function getMistakes() {
+  try {
+    return JSON.parse(localStorage.getItem('qa_quiz_mistakes') || '{}');
+  } catch { return {}; }
+}
+
+function saveMistakes(mistakes) {
+  localStorage.setItem('qa_quiz_mistakes', JSON.stringify(mistakes));
+}
+
+function getMistakeCount(mistakes) {
+  return Object.values(mistakes || getMistakes()).reduce((sum, idxMap) => sum + Object.keys(idxMap).length, 0);
+}
+
+function updateMistakeBank(topicKey, idx, isCorrect) {
+  if (topicKey == null || idx == null) return;
+  const mistakes = getMistakes();
+  if (!isCorrect) {
+    if (!mistakes[topicKey]) mistakes[topicKey] = {};
+    mistakes[topicKey][idx] = { correctStreak: 0 };
+  } else if (mistakes[topicKey] && mistakes[topicKey][idx] !== undefined) {
+    const entry = mistakes[topicKey][idx];
+    entry.correctStreak = (entry.correctStreak || 0) + 1;
+    if (entry.correctStreak >= 2) {
+      delete mistakes[topicKey][idx];
+      if (Object.keys(mistakes[topicKey]).length === 0) delete mistakes[topicKey];
+    }
+  } else {
+    return;
+  }
+  saveMistakes(mistakes);
+}
+
 function buildTopicCards() {
   const picker = document.getElementById('topicPicker');
   picker.innerHTML = '';
@@ -882,8 +930,9 @@ function buildTopicCards() {
   const totalSessions = Object.values(stats).reduce((s, v) => s + (v.count || 0), 0);
   const allBests = Object.values(stats).map(v => v.best || 0).filter(v => v > 0);
   const overallBest = allBests.length ? Math.max(...allBests) : null;
-  const playedTopics = Object.values(stats).filter(v => v.count > 0).length;
+  const playedTopics = Object.keys(TOPICS).filter(k => stats[k] && stats[k].count > 0).length;
   const totalTopics = Object.keys(TOPICS).length;
+  const mistakeCount = getMistakeCount();
 
   const wrapper = document.createElement('div');
   wrapper.className = 'dash-wrapper';
@@ -930,6 +979,21 @@ function buildTopicCards() {
   hero.addEventListener('click', () => openCountModal('mock'));
   main.appendChild(hero);
 
+  if (mistakeCount > 0) {
+    const mistakesHero = document.createElement('button');
+    mistakesHero.className = 'dash-hero dash-hero-mistakes';
+    mistakesHero.innerHTML = `
+      <div class="dash-hero-left">
+        <div class="dash-hero-tag">Spaced Repetition</div>
+        <div class="dash-hero-title">Повторити помилки</div>
+        <div class="dash-hero-desc">${mistakeCount} ${mistakeCount === 1 ? 'питання' : 'питань'}, де ти помилявся — зібрані з усіх тем</div>
+      </div>
+      <div class="dash-hero-btn">Почати →</div>
+    `;
+    mistakesHero.addEventListener('click', () => startQuiz('mistakes'));
+    main.appendChild(mistakesHero);
+  }
+
   const mainSubtitle = document.createElement('div');
   mainSubtitle.className = 'dash-main-subtitle';
   mainSubtitle.textContent = 'або обери окрему тему';
@@ -972,7 +1036,9 @@ function startQuiz(topicKey, count) {
   document.getElementById('quizScreen').style.display = 'block';
   document.getElementById('headerMeta').style.display = 'flex';
 
-  const label = topicKey === 'mock' ? '🔥 Mock Interview' : TOPICS[topicKey].label;
+  const label = topicKey === 'mock' ? '🔥 Mock Interview'
+    : topicKey === 'mistakes' ? '🎯 Банк помилок'
+    : TOPICS[topicKey].label;
   document.getElementById('logoTopic').textContent = label;
   document.getElementById('logoTopic').style.display = 'inline';
 
@@ -1013,9 +1079,9 @@ function renderQuestion() {
   document.getElementById('progressFill').style.width = ((current / total) * 100) + '%';
   document.getElementById('questionNum').textContent = String(current + 1).padStart(2, '0');
 
-  // Mock interview: show topic tag for current question
+  // Mock interview / mistakes review: show topic tag for current question
   const topicTagEl = document.getElementById('questionTopicTag');
-  if (currentTopic === 'mock' && q._topic) {
+  if ((currentTopic === 'mock' || currentTopic === 'mistakes') && q._topic) {
     topicTagEl.textContent = q._topic;
     topicTagEl.style.display = 'inline-block';
   } else {
@@ -1052,7 +1118,8 @@ function selectAnswer(clickedBtn, q) {
   document.querySelectorAll('.option').forEach(b => b.disabled = true);
 
   const fb = document.getElementById('feedbackBox');
-  if (clickedBtn.dataset.isCorrect === '1') {
+  const isCorrect = clickedBtn.dataset.isCorrect === '1';
+  if (isCorrect) {
     correctCount++;
     clickedBtn.classList.add('correct');
     fb.className = 'feedback correct';
@@ -1067,6 +1134,7 @@ function selectAnswer(clickedBtn, q) {
     fb.className = 'feedback wrong';
     fb.textContent = '✗ Неправильно. ' + q.e;
   }
+  updateMistakeBank(q._topicKey, q._idx, isCorrect);
   fb.style.display = 'block';
   updateHeader();
 
@@ -1145,9 +1213,11 @@ function showResults(finishedEarly) {
   document.getElementById('resSkipped').textContent = questions.length - done;
   document.getElementById('progressFill').style.width = '100%';
 
-  const topic = TOPICS[currentTopic];
+  const topicLabel = currentTopic === 'mock' ? 'Mock Interview'
+    : currentTopic === 'mistakes' ? 'Банк помилок'
+    : TOPICS[currentTopic].label;
   let msg = '';
-  if (pct === 100) msg = 'Ідеальний результат — ' + topic.label + ' від зубів відлітає!';
+  if (pct === 100) msg = 'Ідеальний результат — ' + topicLabel + ' від зубів відлітає!';
   else if (pct >= 80) msg = 'Відмінно, тема добре засвоєна.';
   else if (pct >= 60) msg = 'Непогано, але є що повторити.';
   else if (pct >= 40) msg = 'Варто переглянути документацію.';

@@ -815,6 +815,9 @@ html, body {
   font-family: var(--sans);
 }
 
+.dash-hero-mistakes .dash-hero-tag { color: #FB7185; }
+.dash-hero-mistakes .dash-hero-btn { background: #FB7185; }
+
 .dash-main-subtitle {
   font-size: 0.7rem;
   font-weight: 600;
