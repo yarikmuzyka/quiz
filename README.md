@@ -50,7 +50,7 @@ npx serve .
 
 ```
 ├── index.html   — розмітка
-├── style.css    — стилі (Slate & Sky theme)
+├── style.css    — стилі (CI Console theme)
 ├── quiz.js      — логіка + банк питань
 └── README.md
 ```
