@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QA Quiz</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,14 +14,11 @@
   <div class="app">
     <header class="header">
       <div class="logo">
-        <span class="logo-bracket">[</span>
-        <span class="logo-text">QA</span>
-        <span class="logo-dot">.</span>
-        <span class="logo-quiz">quiz</span>
-        <span class="logo-bracket">]</span>
-        <span class="logo-topic-sep" id="logoTopic" style="display:none"></span>
+        <span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span>
+        <span class="logo-user">qa@quiz</span><span class="logo-colon">:~$</span>
+        <span class="logo-cmd" id="logoTopic">study --menu</span><span class="logo-cursor"></span>
       </div>
-      <button class="feedback-btn" id="feedbackOpenBtn">✦ Відгук</button>
+      <button class="feedback-btn" id="feedbackOpenBtn">--feedback</button>
 
       <div class="header-meta" id="headerMeta" style="display:none">
         <span class="meta-item" id="metaCounter">1 / 100</span>
@@ -46,12 +43,17 @@
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       </div>
       <div class="question-area">
-        <div class="question-num" id="questionNum">01</div>
-        <span class="question-topic-tag" id="questionTopicTag" style="display:none"></span>
-        <div class="question-text" id="questionText"></div>
+        <div class="spec-file">
+          <span class="spec-filename" id="specFileName"></span><span class="spec-lineno" id="questionNum"></span>
+          <span class="spec-suite">› describe(<span id="specDescribe"></span>)</span>
+        </div>
+        <div class="question-text">
+          <span class="syn-kw">it(</span><span class="syn-str" id="questionText"></span><span class="syn-kw">) {</span>
+        </div>
       </div>
       <div class="options" id="optionsContainer"></div>
       <div class="feedback" id="feedbackBox" style="display:none"></div>
+      <div class="spec-close">}</div>
       <div class="quiz-actions">
         <button class="next-btn" id="nextBtn" style="display:none">Наступне <span>→</span></button>
       </div>
@@ -60,19 +62,19 @@
     <!-- RESULTS SCREEN -->
     <div class="screen" id="resultsScreen" style="display:none">
       <div class="results-content">
-        <div id="medalContainer" style="display:none" class="medal-container"></div>
-        <div class="result-label">Результат</div>
+        <div id="resultBadge" class="ci-result-badge"></div>
+        <div class="result-label">$ build report</div>
         <div class="result-percent" id="resultPercent">0%</div>
         <div class="result-msg" id="resultMsg"></div>
-        <div class="result-stats">
-          <div class="stat-card correct-card"><div class="stat-n" id="resCorrect">0</div><div class="stat-l">правильних</div></div>
-          <div class="stat-card wrong-card"><div class="stat-n" id="resWrong">0</div><div class="stat-l">неправильних</div></div>
-          <div class="stat-card total-card"><div class="stat-n" id="resTotal">0</div><div class="stat-l">пройдено</div></div>
-          <div class="stat-card skip-card"><div class="stat-n" id="resSkipped">0</div><div class="stat-l">залишилось</div></div>
+        <div class="run-summary">
+          <div class="run-row"><span class="k">passed</span><span class="v pass" id="resCorrect">0</span></div>
+          <div class="run-row"><span class="k">failed</span><span class="v fail" id="resWrong">0</span></div>
+          <div class="run-row"><span class="k">total</span><span class="v" id="resTotal">0</span></div>
+          <div class="run-row"><span class="k">pending</span><span class="v" id="resSkipped">0</span></div>
         </div>
         <button class="start-btn" id="restartBtn"><span>Обрати тему</span><span class="btn-arrow">↩</span></button>
         <div class="wrong-review" id="wrongReview" style="display:none">
-          <div class="wrong-review-title">Помилкові питання</div>
+          <div class="wrong-review-title">✗ FAILURES</div>
           <div id="wrongList"></div>
         </div>
       </div>

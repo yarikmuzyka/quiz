@@ -808,7 +808,16 @@ let current = 0;
 let correctCount = 0;
 let wrongCount = 0;
 let answered = false;
-const letters = ['A', 'B', 'C', 'D'];
+const SPEC_NAMES = {
+  selenide: 'selenide.spec',
+  restassured: 'rest-assured.spec',
+  qaautomation: 'qa-automation.spec',
+  javacore: 'java-core.spec',
+  playwright: 'playwright-ts.spec',
+  sysdesign: 'system-design.spec',
+  aiqa: 'ai-in-testing.spec',
+  qabasics: 'testing-basics.spec',
+};
 
 // ─── Utils ───────────────────────────────────────
 function shuffle(arr) {
@@ -964,67 +973,63 @@ function buildTopicCards() {
   const main = document.createElement('div');
   main.className = 'dash-main';
 
-  // Hero card
+  // ▸ run --mock full-suite
   const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
-  const hero = document.createElement('button');
-  hero.className = 'dash-hero';
-  hero.innerHTML = `
-    <div class="dash-hero-left">
-      <div class="dash-hero-tag">Interview Mode</div>
-      <div class="dash-hero-title">Mock Interview</div>
-      <div class="dash-hero-desc">100 рандомних питань з усіх ${totalTopics} тем · ${totalQuestions}+ загальний пул</div>
+  const mockAction = document.createElement('button');
+  mockAction.className = 'ci-action';
+  mockAction.innerHTML = `
+    <div class="cmd">
+      <div><span class="cmd-prompt">▸</span> run <span class="flag">--mock</span> full-suite</div>
+      <div class="cmd-sub">${totalQuestions}+ питань з усіх ${totalTopics} тем</div>
     </div>
-    <div class="dash-hero-btn">Почати →</div>
+    <div class="go">RUN →</div>
   `;
-  hero.addEventListener('click', () => openCountModal('mock'));
-  main.appendChild(hero);
+  mockAction.addEventListener('click', () => openCountModal('mock'));
+  main.appendChild(mockAction);
 
+  // ▸ rerun --failed (mistake bank)
   if (mistakeCount > 0) {
-    const mistakesHero = document.createElement('button');
-    mistakesHero.className = 'dash-hero dash-hero-mistakes';
-    mistakesHero.innerHTML = `
-      <div class="dash-hero-left">
-        <div class="dash-hero-tag">Spaced Repetition</div>
-        <div class="dash-hero-title">Повторити помилки</div>
-        <div class="dash-hero-desc">${mistakeCount} ${mistakeCount === 1 ? 'питання' : 'питань'}, де ти помилявся — зібрані з усіх тем</div>
+    const rerunAction = document.createElement('button');
+    rerunAction.className = 'ci-action secondary';
+    rerunAction.innerHTML = `
+      <div class="cmd">
+        <div><span class="cmd-prompt">▸</span> rerun <span class="flag">--failed</span></div>
+        <div class="cmd-sub">${mistakeCount} ${mistakeCount === 1 ? 'питання' : 'питань'}, де ти помилявся</div>
       </div>
-      <div class="dash-hero-btn">Почати →</div>
+      <div class="go">RUN →</div>
     `;
-    mistakesHero.addEventListener('click', () => startQuiz('mistakes'));
-    main.appendChild(mistakesHero);
+    rerunAction.addEventListener('click', () => startQuiz('mistakes'));
+    main.appendChild(rerunAction);
   }
 
-  const mainSubtitle = document.createElement('div');
-  mainSubtitle.className = 'dash-main-subtitle';
-  mainSubtitle.textContent = 'або обери окрему тему';
-  main.appendChild(mainSubtitle);
+  const listHead = document.createElement('div');
+  listHead.className = 'dash-main-subtitle';
+  listHead.textContent = `// specs — ${totalTopics} файлів`;
+  main.appendChild(listHead);
 
-  // Topic cards grid
-  const grid = document.createElement('div');
-  grid.className = 'dash-grid';
+  // Topic spec-list
+  const list = document.createElement('div');
+  list.className = 'spec-list';
 
-  const accentColors = ['#0EA5E9', '#FB923C', '#A78BFA', '#2DD4BF', '#F472B6', '#34D399', '#F59E0B', '#64748B'];
-
-  Object.entries(TOPICS).forEach(([key, topic], i) => {
+  Object.entries(TOPICS).forEach(([key, topic]) => {
     const s = stats[key];
     const count = s ? (s.count || 0) : 0;
     const best = count && s && s.best != null ? s.best : null;
-    const card = document.createElement('button');
-    card.className = 'dash-card';
-    card.style.setProperty('--card-accent', accentColors[i % accentColors.length]);
-    card.innerHTML = `
-      <div class="dash-card-title">${topic.label}</div>
-      <div class="dash-card-sub">${topic.badge}</div>
-      <div class="dash-card-footer">
-        <span class="dash-card-pct ${best !== null ? 'played' : 'unplayed'}">${best !== null ? best + '%' : '—'}</span>
-        <span class="dash-card-arrow">Старт →</span>
-      </div>
+    const status = best === null ? 'skip' : best >= 75 ? 'pass' : 'fail';
+    const statusLabel = best === null ? '····' : status === 'pass' ? 'PASS' : 'FAIL';
+    const row = document.createElement('button');
+    row.className = 'spec-row';
+    row.innerHTML = `
+      <span class="spec-status ${status}">${statusLabel}</span>
+      <span class="spec-topic-name">${SPEC_NAMES[key] || key}</span>
+      <span class="spec-progress"><i style="width:${best !== null ? best : 0}%"></i></span>
+      <span class="spec-pct">${best !== null ? best + '%' : '—'}</span>
     `;
-    card.addEventListener('click', () => openCountModal(key));
-    grid.appendChild(card);
+    row.addEventListener('click', () => openCountModal(key));
+    list.appendChild(row);
   });
 
-  main.appendChild(grid);
+  main.appendChild(list);
   wrapper.appendChild(main);
   picker.appendChild(wrapper);
 }
@@ -1036,11 +1041,10 @@ function startQuiz(topicKey, count) {
   document.getElementById('quizScreen').style.display = 'block';
   document.getElementById('headerMeta').style.display = 'flex';
 
-  const label = topicKey === 'mock' ? '🔥 Mock Interview'
-    : topicKey === 'mistakes' ? '🎯 Банк помилок'
-    : TOPICS[topicKey].label;
-  document.getElementById('logoTopic').textContent = label;
-  document.getElementById('logoTopic').style.display = 'inline';
+  const cmd = topicKey === 'mock' ? 'run --mock'
+    : topicKey === 'mistakes' ? 'rerun --failed'
+    : `run --topic ${topicKey}`;
+  document.getElementById('logoTopic').textContent = cmd;
 
   renderQuestion();
 }
@@ -1077,16 +1081,9 @@ function renderQuestion() {
   const total = questions.length;
 
   document.getElementById('progressFill').style.width = ((current / total) * 100) + '%';
-  document.getElementById('questionNum').textContent = String(current + 1).padStart(2, '0');
-
-  // Mock interview / mistakes review: show topic tag for current question
-  const topicTagEl = document.getElementById('questionTopicTag');
-  if ((currentTopic === 'mock' || currentTopic === 'mistakes') && q._topic) {
-    topicTagEl.textContent = q._topic;
-    topicTagEl.style.display = 'inline-block';
-  } else {
-    topicTagEl.style.display = 'none';
-  }
+  document.getElementById('questionNum').textContent = current + 1;
+  document.getElementById('specFileName').textContent = SPEC_NAMES[q._topicKey] || (q._topicKey + '.spec');
+  document.getElementById('specDescribe').textContent = TOPICS[q._topicKey].label;
 
   document.getElementById('questionText').textContent = q.q;
   document.getElementById('feedbackBox').style.display = 'none';
@@ -1098,12 +1095,12 @@ function renderQuestion() {
   container.innerHTML = '';
 
   const shuffledIdx = shuffle([0, 1, 2, 3]);
-  shuffledIdx.forEach((origIdx, newPos) => {
+  shuffledIdx.forEach(origIdx => {
     const btn = document.createElement('button');
     btn.className = 'option';
     btn.dataset.isCorrect = (origIdx === q.c) ? '1' : '0';
     btn.innerHTML =
-      '<span class="option-letter">' + letters[newPos] + '</span>' +
+      '<span class="option-box">[ ]</span>' +
       '<span>' + q.o[origIdx] + '</span>';
     btn.addEventListener('click', () => selectAnswer(btn, q));
     container.appendChild(btn);
@@ -1119,20 +1116,26 @@ function selectAnswer(clickedBtn, q) {
 
   const fb = document.getElementById('feedbackBox');
   const isCorrect = clickedBtn.dataset.isCorrect === '1';
+  const clickedBox = clickedBtn.querySelector('.option-box');
+  if (clickedBox) clickedBox.textContent = '[x]';
   if (isCorrect) {
     correctCount++;
     clickedBtn.classList.add('correct');
     fb.className = 'feedback correct';
-    fb.textContent = '✓ Правильно! ' + q.e;
+    fb.textContent = q.e;
   } else {
     wrongCount++;
     wrongQuestions.push(q);
     clickedBtn.classList.add('wrong');
     document.querySelectorAll('.option').forEach(b => {
-      if (b.dataset.isCorrect === '1') b.classList.add('show-answer');
+      if (b.dataset.isCorrect === '1') {
+        b.classList.add('show-answer');
+        const box = b.querySelector('.option-box');
+        if (box) box.textContent = '[x]';
+      }
     });
     fb.className = 'feedback wrong';
-    fb.textContent = '✗ Неправильно. ' + q.e;
+    fb.textContent = q.e;
   }
   updateMistakeBank(q._topicKey, q._idx, isCorrect);
   fb.style.display = 'block';
@@ -1141,36 +1144,28 @@ function selectAnswer(clickedBtn, q) {
   const nextBtn = document.getElementById('nextBtn');
   nextBtn.style.display = 'flex';
   nextBtn.innerHTML = current < questions.length - 1
-    ? 'Наступне <span>→</span>'
-    : 'Переглянути результат <span>→</span>';
+    ? '$ наступне <span>→</span>'
+    : '$ переглянути результат <span>→</span>';
 }
 
-// ─── Medal SVG ────────────────────────────────────
-function getMedalSVG(type) {
-  const palettes = {
-    gold:   { outer: '#B8860B', mid: '#F59E0B', inner: '#FDE68A', outline: '#F59E0B', textMain: '#78350F', textSub: '#92400E' },
-    silver: { outer: '#6B7280', mid: '#9CA3AF', inner: '#E5E7EB', outline: '#9CA3AF', textMain: '#374151', textSub: '#4B5563' },
-    bronze: { outer: '#7C3A1A', mid: '#B45309', inner: '#FED7AA', outline: '#B45309', textMain: '#7C2D12', textSub: '#9A3412' },
-  };
-  const p = palettes[type];
-  return `<svg viewBox="0 0 150 165" xmlns="http://www.w3.org/2000/svg" width="120" height="132">
-    <rect x="57" y="0" width="36" height="44" rx="4" fill="#2563EB"/>
-    <rect x="63" y="0" width="10" height="44" rx="3" fill="#60A5FA" opacity="0.55"/>
-    <polygon points="75,44 122,71 122,126 75,152 28,126 28,71" fill="${p.outer}"/>
-    <polygon points="75,50 116,75 116,122 75,147 34,122 34,75" fill="${p.mid}"/>
-    <polygon points="75,60 108,80 108,118 75,140 42,118 42,80" fill="${p.inner}"/>
-    <polygon points="75,63 105,82 105,116 75,137 45,116 45,82" fill="none" stroke="${p.outline}" stroke-width="1.5"/>
-    <text x="75" y="108" text-anchor="middle" font-family="'Courier New',monospace" font-size="22" font-weight="700" fill="${p.textMain}">QA</text>
-    <text x="75" y="93" text-anchor="middle" font-family="sans-serif" font-size="9" font-weight="600" fill="${p.textSub}" letter-spacing="3">QUIZ</text>
-    <ellipse cx="60" cy="76" rx="14" ry="7" fill="#FFFFFF" opacity="0.2"/>
-  </svg>`;
+// ─── Result Badge (shields.io-style CI badge) ─────
+function getResultBadge(pct) {
+  let grade, pass;
+  if (pct === 100) { grade = 'A+'; pass = true; }
+  else if (pct >= 90) { grade = 'A'; pass = true; }
+  else if (pct >= 80) { grade = 'B'; pass = true; }
+  else if (pct >= 75) { grade = 'C'; pass = true; }
+  else if (pct >= 60) { grade = 'D'; pass = false; }
+  else { grade = 'F'; pass = false; }
+  const status = pass ? 'PASSED' : 'FAILED';
+  return `<span class="b-label">qa-quiz</span><span class="b-value ${pass ? 'pass' : 'fail'}">${status} · ${grade}</span>`;
 }
 
 function goHome() {
   document.getElementById('resultsScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('headerMeta').style.display = 'none';
-  document.getElementById('logoTopic').style.display = 'none';
+  document.getElementById('logoTopic').textContent = 'study --menu';
   const finishBtn = document.getElementById('finishBtn');
   finishBtn.textContent = 'Фініш';
   finishBtn.onclick = null;
@@ -1191,21 +1186,11 @@ function showResults(finishedEarly) {
   const done = finishedEarly ? current : current + 1;
   const pct = done > 0 ? Math.round(correctCount / done * 100) : 0;
 
-  document.getElementById('resultPercent').textContent = pct + '%';
+  const resultPercentEl = document.getElementById('resultPercent');
+  resultPercentEl.textContent = pct + '%';
+  resultPercentEl.style.color = pct >= 75 ? 'var(--correct)' : 'var(--danger)';
 
-  const medalEl = document.getElementById('medalContainer');
-  if (pct >= 90) {
-    medalEl.innerHTML = getMedalSVG('gold');
-    medalEl.style.display = 'flex';
-  } else if (pct >= 80) {
-    medalEl.innerHTML = getMedalSVG('silver');
-    medalEl.style.display = 'flex';
-  } else if (pct >= 75) {
-    medalEl.innerHTML = getMedalSVG('bronze');
-    medalEl.style.display = 'flex';
-  } else {
-    medalEl.style.display = 'none';
-  }
+  document.getElementById('resultBadge').innerHTML = getResultBadge(pct);
 
   document.getElementById('resCorrect').textContent = correctCount;
   document.getElementById('resWrong').textContent = wrongCount;
@@ -1235,7 +1220,7 @@ function showResults(finishedEarly) {
       const item = document.createElement('div');
       item.className = 'wrong-item';
       item.innerHTML = `
-        <div class="wrong-item-num">${i + 1}</div>
+        <div class="wrong-item-num">FAIL #${i + 1}</div>
         <div class="wrong-item-body">
           <div class="wrong-item-q">${q.q}</div>
           <div class="wrong-item-answer">
