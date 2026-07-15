@@ -245,11 +245,17 @@ html, body {
   color: var(--text);
 }
 .option:disabled { cursor: default; }
+.option.selected {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text);
+}
 
 .option-box {
   color: var(--text3);
   flex-shrink: 0;
   font-weight: 600;
+  min-width: 3.25rem;
 }
 
 .option.correct { color: var(--correct2); }

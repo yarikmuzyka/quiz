@@ -808,6 +808,7 @@ let current = 0;
 let correctCount = 0;
 let wrongCount = 0;
 let answered = false;
+let selectedOptionBtn = null;
 const SPEC_NAMES = {
   selenide: 'selenide.spec',
   restassured: 'rest-assured.spec',
@@ -827,6 +828,18 @@ function shuffle(arr) {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+const OPTION_LABELS = ['A', 'B', 'C', 'D'];
+
+function formatOptionMarker(box, checked) {
+  box.textContent = `${checked ? '[x]' : '[ ]'} ${box.dataset.label}`;
+}
+
+function formatOptionText(text, originalToDisplayLabel) {
+  return text.replace(/\b([A-D])\s+(або|та)\s+([A-D])\b/g, (_, first, joiner, second) => {
+    return `${originalToDisplayLabel[first]} ${joiner} ${originalToDisplayLabel[second]}`;
+  });
 }
 
 let wrongQuestions = [];
@@ -1077,6 +1090,7 @@ document.querySelectorAll('.count-opt').forEach(btn => {
 // ─── Render Question ──────────────────────────────
 function renderQuestion() {
   answered = false;
+  selectedOptionBtn = null;
   const q = questions[current];
   const total = questions.length;
 
@@ -1095,43 +1109,73 @@ function renderQuestion() {
   container.innerHTML = '';
 
   const shuffledIdx = shuffle([0, 1, 2, 3]);
-  shuffledIdx.forEach(origIdx => {
+  const originalToDisplayLabel = {};
+  shuffledIdx.forEach((origIdx, displayIdx) => {
+    originalToDisplayLabel[OPTION_LABELS[origIdx]] = OPTION_LABELS[displayIdx];
+  });
+
+  shuffledIdx.forEach((origIdx, displayIdx) => {
     const btn = document.createElement('button');
+    const box = document.createElement('span');
+    const text = document.createElement('span');
+    const label = OPTION_LABELS[displayIdx];
+
     btn.className = 'option';
     btn.dataset.isCorrect = (origIdx === q.c) ? '1' : '0';
-    btn.innerHTML =
-      '<span class="option-box">[ ]</span>' +
-      '<span>' + q.o[origIdx] + '</span>';
-    btn.addEventListener('click', () => selectAnswer(btn, q));
+    box.className = 'option-box';
+    box.dataset.label = label;
+    formatOptionMarker(box, false);
+    text.textContent = formatOptionText(q.o[origIdx], originalToDisplayLabel);
+    btn.appendChild(box);
+    btn.appendChild(text);
+    btn.addEventListener('click', () => selectAnswer(btn));
     container.appendChild(btn);
   });
 }
 
 // ─── Select Answer ────────────────────────────────
-function selectAnswer(clickedBtn, q) {
+function selectAnswer(clickedBtn) {
   if (answered) return;
+
+  if (selectedOptionBtn) {
+    selectedOptionBtn.classList.remove('selected');
+    const previousBox = selectedOptionBtn.querySelector('.option-box');
+    if (previousBox) formatOptionMarker(previousBox, false);
+  }
+
+  selectedOptionBtn = clickedBtn;
+  clickedBtn.classList.add('selected');
+  const clickedBox = clickedBtn.querySelector('.option-box');
+  if (clickedBox) formatOptionMarker(clickedBox, true);
+
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.style.display = 'flex';
+  nextBtn.innerHTML = '$ відповісти <span>→</span>';
+}
+
+function submitAnswer() {
+  if (answered || !selectedOptionBtn) return;
   answered = true;
 
   document.querySelectorAll('.option').forEach(b => b.disabled = true);
 
+  const q = questions[current];
   const fb = document.getElementById('feedbackBox');
-  const isCorrect = clickedBtn.dataset.isCorrect === '1';
-  const clickedBox = clickedBtn.querySelector('.option-box');
-  if (clickedBox) clickedBox.textContent = '[x]';
+  const isCorrect = selectedOptionBtn.dataset.isCorrect === '1';
   if (isCorrect) {
     correctCount++;
-    clickedBtn.classList.add('correct');
+    selectedOptionBtn.classList.add('correct');
     fb.className = 'feedback correct';
     fb.textContent = q.e;
   } else {
     wrongCount++;
     wrongQuestions.push(q);
-    clickedBtn.classList.add('wrong');
+    selectedOptionBtn.classList.add('wrong');
     document.querySelectorAll('.option').forEach(b => {
       if (b.dataset.isCorrect === '1') {
         b.classList.add('show-answer');
         const box = b.querySelector('.option-box');
-        if (box) box.textContent = '[x]';
+        if (box) formatOptionMarker(box, true);
       }
     });
     fb.className = 'feedback wrong';
@@ -1240,6 +1284,11 @@ function showResults(finishedEarly) {
 
 // ─── Event Listeners ──────────────────────────────
 document.getElementById('nextBtn').addEventListener('click', () => {
+  if (!answered) {
+    submitAnswer();
+    return;
+  }
+
   if (current < questions.length - 1) { current++; renderQuestion(); }
   else showResults(false);
 });
