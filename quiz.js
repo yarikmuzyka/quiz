@@ -842,6 +842,57 @@ function formatOptionText(text, originalToDisplayLabel) {
   });
 }
 
+function trackEvent(name) {
+  const payload = {
+    path: `pwa/${name}`,
+    title: `PWA: ${name}`,
+    event: true
+  };
+
+  if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+    window.goatcounter.count(payload);
+    return;
+  }
+
+  let attempts = 0;
+  const timer = setInterval(() => {
+    attempts += 1;
+    if (window.goatcounter && typeof window.goatcounter.count === 'function') {
+      clearInterval(timer);
+      window.goatcounter.count(payload);
+    } else if (attempts >= 50) {
+      clearInterval(timer);
+    }
+  }, 100);
+}
+
+function isStandalonePwa() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function trackStandaloneOpen() {
+  if (!isStandalonePwa()) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const storageKey = 'qa_quiz_pwa_open_tracked_at';
+  if (localStorage.getItem(storageKey) === today) return;
+
+  localStorage.setItem(storageKey, today);
+  trackEvent('opened_standalone');
+}
+
+window.addEventListener('beforeinstallprompt', event => {
+  trackEvent('install_prompt_shown');
+  event.userChoice.then(choice => {
+    trackEvent(choice.outcome === 'accepted' ? 'install_prompt_accepted' : 'install_prompt_dismissed');
+  });
+});
+
+window.addEventListener('appinstalled', () => {
+  localStorage.setItem('qa_quiz_pwa_installed', '1');
+  trackEvent('installed');
+});
+
 let wrongQuestions = [];
 
 function initQuiz(topicKey, count) {
@@ -1341,3 +1392,4 @@ document.getElementById('restartBtn').addEventListener('click', goHome);
 // ─── Init ─────────────────────────────────────────
 buildTopicCards();
 renderTopicPicker();
+trackStandaloneOpen();
