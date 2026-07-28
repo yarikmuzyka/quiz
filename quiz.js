@@ -614,6 +614,7 @@ const TOPICS = {
   // ─────────────────────────────────────────────────
   sysdesign: {
     label: 'Системний дизайн',
+    en: { label: 'System Design' },
     badge: '100 запитань · Архітектура для QA',
     desc: 'Мікросервіси, API, бази даних, черги повідомлень, кешування, балансування навантаження та тестування розподілених систем.',
     code: ['Client → LB','  → Service A','    → Cache','    → DB (RW)','  → Service B','    → Queue','    → DB (RO)'],
@@ -683,6 +684,7 @@ const TOPICS = {
   // ─────────────────────────────────────────────────
   aiqa: {
     label: 'AI у тестуванні',
+    en: { label: 'AI in Testing' },
     badge: '100 запитань · AI/ML для QA',
     desc: 'Використання AI інструментів у тестуванні: генерація тестів, LLM, prompt engineering, AI-assisted QA та тестування AI систем.',
     code:['// AI-generated test','test("checkout", () => {','  // Copilot suggested','  // based on context','  expect(total)','.toBe(99.99);','});'],
@@ -738,6 +740,7 @@ const TOPICS = {
   // ─────────────────────────────────────────────────
   qabasics: {
     label: 'Основи тестування',
+    en: { label: 'Testing Basics' },
     badge: '100 запитань · Теорія QA',
     desc: 'ISTQB концепції, рівні та типи тестування, техніки тест-дизайну, баг lifecycle, документація та процеси якості.',
     code:['// Test Design','Given: preconditions','When:  action','Then:  expected result','','// BVA: field 1-100','// → test: 0,1,2,99,100,101'],
@@ -809,6 +812,7 @@ let correctCount = 0;
 let wrongCount = 0;
 let answered = false;
 let selectedOptionBtn = null;
+let currentLabelMap = {};
 const SPEC_NAMES = {
   selenide: 'selenide.spec',
   restassured: 'rest-assured.spec',
@@ -819,6 +823,117 @@ const SPEC_NAMES = {
   aiqa: 'ai-in-testing.spec',
   qabasics: 'testing-basics.spec',
 };
+
+// ─── i18n ─────────────────────────────────────────
+// UI strings live here; question banks get optional per-entry `en: {q, o, e}`
+// fields and fall back to Ukrainian until a topic is translated.
+const I18N = {
+  uk: {
+    bestScore: 'найкращий результат',
+    sessionsPlayed: 'сесій зіграно',
+    topicsDone: 'тем пройдено',
+    mockSub: (q, t) => `${q}+ питань з усіх ${t} тем`,
+    rerunSub: n => `${n} ${n === 1 ? 'питання' : 'питань'}, де ти помилявся`,
+    specsHead: n => `// specs — ${n} файлів`,
+    countModalTitle: title => `${title} — кількість питань`,
+    countModalLabel: 'Скільки питань пройти?',
+    countQuick: 'швидкий раунд',
+    countStandard: 'стандартний',
+    countDeep: 'поглиблений',
+    finish: 'Фініш',
+    home: '← Головна',
+    submitAnswer: '$ відповісти <span>→</span>',
+    nextQuestion: '$ наступне <span>→</span>',
+    viewReport: '$ переглянути результат <span>→</span>',
+    chooseTopic: 'Обрати тему',
+    correctAnswerLabel: 'Правильна відповідь:',
+    mistakesBank: 'Банк помилок',
+    msg100: label => `Ідеальний результат — ${label} від зубів відлітає!`,
+    msg80: 'Відмінно, тема добре засвоєна.',
+    msg60: 'Непогано, але є що повторити.',
+    msg40: 'Варто переглянути документацію.',
+    msg0: 'Рекомендуємо детально вивчити тему.',
+    fbTitle: 'Залишити відгук',
+    fbQuestion: 'Як тобі квіз?',
+    fbComment: 'Коментар',
+    fbOptional: '(необовʼязково)',
+    fbPlaceholder: 'Що сподобалось, що варто покращити...',
+    fbSubmit: 'Надіслати →',
+    fbMailSubject: 'QA Quiz — відгук',
+    fbRating: 'Оцінка',
+    fbStars: n => `${n}/5 зірок`,
+    fbNoRating: 'без оцінки',
+    fbNoComment: '(без коментаря)',
+  },
+  en: {
+    bestScore: 'best score',
+    sessionsPlayed: 'sessions played',
+    topicsDone: 'topics covered',
+    mockSub: (q, t) => `${q}+ questions across all ${t} topics`,
+    rerunSub: n => `${n} question${n === 1 ? '' : 's'} you got wrong`,
+    specsHead: n => `// specs — ${n} files`,
+    countModalTitle: title => `${title} — question count`,
+    countModalLabel: 'How many questions?',
+    countQuick: 'quick round',
+    countStandard: 'standard',
+    countDeep: 'deep dive',
+    finish: 'Finish',
+    home: '← Home',
+    submitAnswer: '$ submit <span>→</span>',
+    nextQuestion: '$ next <span>→</span>',
+    viewReport: '$ view report <span>→</span>',
+    chooseTopic: 'Choose topic',
+    correctAnswerLabel: 'Correct answer:',
+    mistakesBank: 'Mistake bank',
+    msg100: label => `Perfect score — you know ${label} inside out!`,
+    msg80: 'Excellent — this topic is well covered.',
+    msg60: 'Not bad, but worth a review.',
+    msg40: 'Consider revisiting the docs.',
+    msg0: 'Time for a deep study session on this one.',
+    fbTitle: 'Leave feedback',
+    fbQuestion: 'How do you like the quiz?',
+    fbComment: 'Comment',
+    fbOptional: '(optional)',
+    fbPlaceholder: 'What you liked, what could be better...',
+    fbSubmit: 'Send →',
+    fbMailSubject: 'QA Quiz — feedback',
+    fbRating: 'Rating',
+    fbStars: n => `${n}/5 stars`,
+    fbNoRating: 'no rating',
+    fbNoComment: '(no comment)',
+  },
+};
+
+let lang = localStorage.getItem('qa_quiz_lang') === 'en' ? 'en' : 'uk';
+
+function t(key, ...args) {
+  const dict = I18N[lang] || I18N.uk;
+  const entry = dict[key] !== undefined ? dict[key] : I18N.uk[key];
+  return typeof entry === 'function' ? entry(...args) : entry;
+}
+
+// Bank fallback: untranslated entries render in Ukrainian
+function qText(q) { return lang === 'en' && q.en && q.en.q ? q.en.q : q.q; }
+function qOption(q, i) { return lang === 'en' && q.en && q.en.o && q.en.o[i] != null ? q.en.o[i] : q.o[i]; }
+function qExp(q) { return lang === 'en' && q.en && q.en.e ? q.en.e : q.e; }
+function topicMeta(topic, field) { return lang === 'en' && topic.en && topic.en[field] ? topic.en[field] : topic[field]; }
+
+function applyStaticI18n() {
+  document.documentElement.lang = lang;
+  document.getElementById('langVal').textContent = lang;
+  document.querySelector('#countModal .modal-label').textContent = t('countModalLabel');
+  const countLabels = [t('countQuick'), t('countStandard'), t('countDeep')];
+  document.querySelectorAll('#countModal .count-opt-l').forEach((el, i) => el.textContent = countLabels[i]);
+  document.querySelector('#feedbackModal .modal-title').textContent = t('fbTitle');
+  const fbLabels = document.querySelectorAll('#feedbackModal .modal-label');
+  fbLabels[0].textContent = t('fbQuestion');
+  fbLabels[1].innerHTML = `${t('fbComment')} <span class="modal-label-opt">${t('fbOptional')}</span>`;
+  document.getElementById('feedbackText').placeholder = t('fbPlaceholder');
+  document.getElementById('feedbackSubmitBtn').textContent = t('fbSubmit');
+  document.querySelector('#restartBtn span').textContent = t('chooseTopic');
+  const finishBtn = document.getElementById('finishBtn');
+  finishBtn.textContent = finishBtn.onclick ? t('home') : t('finish');
+}
 
 // ─── Utils ───────────────────────────────────────
 function shuffle(arr) {
@@ -837,7 +952,7 @@ function formatOptionMarker(box, checked) {
 }
 
 function formatOptionText(text, originalToDisplayLabel) {
-  return text.replace(/\b([A-D])\s+(або|та)\s+([A-D])\b/g, (_, first, joiner, second) => {
+  return text.replace(/\b([A-D])\s+(або|та|or|and)\s+([A-D])\b/g, (_, first, joiner, second) => {
     return `${originalToDisplayLabel[first]} ${joiner} ${originalToDisplayLabel[second]}`;
   });
 }
@@ -1017,17 +1132,17 @@ function buildTopicCards() {
     <div class="dash-topbar-stats">
       <div class="dash-topbar-stat">
         <span class="dash-topbar-n">${overallBest !== null ? overallBest + '%' : '—'}</span>
-        <span class="dash-topbar-l">найкращий результат</span>
+        <span class="dash-topbar-l">${t('bestScore')}</span>
       </div>
       <div class="dash-topbar-divider"></div>
       <div class="dash-topbar-stat">
         <span class="dash-topbar-n">${totalSessions}</span>
-        <span class="dash-topbar-l">сесій зіграно</span>
+        <span class="dash-topbar-l">${t('sessionsPlayed')}</span>
       </div>
       <div class="dash-topbar-divider"></div>
       <div class="dash-topbar-stat">
         <span class="dash-topbar-n">${playedTopics}/${totalTopics}</span>
-        <span class="dash-topbar-l">тем пройдено</span>
+        <span class="dash-topbar-l">${t('topicsDone')}</span>
       </div>
     </div>
   `;
@@ -1044,7 +1159,7 @@ function buildTopicCards() {
   mockAction.innerHTML = `
     <div class="cmd">
       <div><span class="cmd-prompt">▸</span> run <span class="flag">--mock</span> full-suite</div>
-      <div class="cmd-sub">${totalQuestions}+ питань з усіх ${totalTopics} тем</div>
+      <div class="cmd-sub">${t('mockSub', totalQuestions, totalTopics)}</div>
     </div>
     <div class="go">RUN →</div>
   `;
@@ -1058,7 +1173,7 @@ function buildTopicCards() {
     rerunAction.innerHTML = `
       <div class="cmd">
         <div><span class="cmd-prompt">▸</span> rerun <span class="flag">--failed</span></div>
-        <div class="cmd-sub">${mistakeCount} ${mistakeCount === 1 ? 'питання' : 'питань'}, де ти помилявся</div>
+        <div class="cmd-sub">${t('rerunSub', mistakeCount)}</div>
       </div>
       <div class="go">RUN →</div>
     `;
@@ -1068,7 +1183,7 @@ function buildTopicCards() {
 
   const listHead = document.createElement('div');
   listHead.className = 'dash-main-subtitle';
-  listHead.textContent = `// specs — ${totalTopics} файлів`;
+  listHead.textContent = t('specsHead', totalTopics);
   main.appendChild(listHead);
 
   // Topic spec-list
@@ -1118,8 +1233,8 @@ let _pendingTopic = null;
 
 function openCountModal(topicKey) {
   _pendingTopic = topicKey;
-  const title = topicKey === 'mock' ? 'Mock Interview' : TOPICS[topicKey].label;
-  document.getElementById('countModalTitle').textContent = title + ' — кількість питань';
+  const title = topicKey === 'mock' ? 'Mock Interview' : topicMeta(TOPICS[topicKey], 'label');
+  document.getElementById('countModalTitle').textContent = t('countModalTitle', title);
   document.getElementById('countModal').style.display = 'flex';
 }
 
@@ -1148,9 +1263,9 @@ function renderQuestion() {
   document.getElementById('progressFill').style.width = ((current / total) * 100) + '%';
   document.getElementById('questionNum').textContent = current + 1;
   document.getElementById('specFileName').textContent = SPEC_NAMES[q._topicKey] || (q._topicKey + '.spec');
-  document.getElementById('specDescribe').textContent = TOPICS[q._topicKey].label;
+  document.getElementById('specDescribe').textContent = topicMeta(TOPICS[q._topicKey], 'label');
 
-  document.getElementById('questionText').textContent = q.q;
+  document.getElementById('questionText').textContent = qText(q);
   document.getElementById('feedbackBox').style.display = 'none';
   document.getElementById('nextBtn').style.display = 'none';
 
@@ -1160,9 +1275,9 @@ function renderQuestion() {
   container.innerHTML = '';
 
   const shuffledIdx = shuffle([0, 1, 2, 3]);
-  const originalToDisplayLabel = {};
+  currentLabelMap = {};
   shuffledIdx.forEach((origIdx, displayIdx) => {
-    originalToDisplayLabel[OPTION_LABELS[origIdx]] = OPTION_LABELS[displayIdx];
+    currentLabelMap[OPTION_LABELS[origIdx]] = OPTION_LABELS[displayIdx];
   });
 
   shuffledIdx.forEach((origIdx, displayIdx) => {
@@ -1173,10 +1288,12 @@ function renderQuestion() {
 
     btn.className = 'option';
     btn.dataset.isCorrect = (origIdx === q.c) ? '1' : '0';
+    btn.dataset.origIdx = origIdx;
     box.className = 'option-box';
     box.dataset.label = label;
     formatOptionMarker(box, false);
-    text.textContent = formatOptionText(q.o[origIdx], originalToDisplayLabel);
+    text.className = 'option-text';
+    text.textContent = formatOptionText(qOption(q, origIdx), currentLabelMap);
     btn.appendChild(box);
     btn.appendChild(text);
     btn.addEventListener('click', () => selectAnswer(btn));
@@ -1201,7 +1318,7 @@ function selectAnswer(clickedBtn) {
 
   const nextBtn = document.getElementById('nextBtn');
   nextBtn.style.display = 'flex';
-  nextBtn.innerHTML = '$ відповісти <span>→</span>';
+  nextBtn.innerHTML = t('submitAnswer');
 }
 
 function submitAnswer() {
@@ -1217,7 +1334,7 @@ function submitAnswer() {
     correctCount++;
     selectedOptionBtn.classList.add('correct');
     fb.className = 'feedback correct';
-    fb.textContent = q.e;
+    fb.textContent = qExp(q);
   } else {
     wrongCount++;
     wrongQuestions.push(q);
@@ -1230,7 +1347,7 @@ function submitAnswer() {
       }
     });
     fb.className = 'feedback wrong';
-    fb.textContent = q.e;
+    fb.textContent = qExp(q);
   }
   updateMistakeBank(q._topicKey, q._idx, isCorrect);
   fb.style.display = 'block';
@@ -1238,9 +1355,7 @@ function submitAnswer() {
 
   const nextBtn = document.getElementById('nextBtn');
   nextBtn.style.display = 'flex';
-  nextBtn.innerHTML = current < questions.length - 1
-    ? '$ наступне <span>→</span>'
-    : '$ переглянути результат <span>→</span>';
+  nextBtn.innerHTML = current < questions.length - 1 ? t('nextQuestion') : t('viewReport');
 }
 
 // ─── Result Badge (shields.io-style CI badge) ─────
@@ -1262,24 +1377,67 @@ function goHome() {
   document.getElementById('headerMeta').style.display = 'none';
   document.getElementById('logoTopic').textContent = 'study --menu';
   const finishBtn = document.getElementById('finishBtn');
-  finishBtn.textContent = 'Фініш';
   finishBtn.onclick = null;
+  finishBtn.textContent = t('finish');
+  lastResultPct = null;
   buildTopicCards();
   renderTopicPicker();
   document.getElementById('startScreen').style.display = 'flex';
 }
 
 // ─── Show Results ─────────────────────────────────
+let lastResultPct = null;
+
+function resultMessage(pct) {
+  const topicLabel = currentTopic === 'mock' ? 'Mock Interview'
+    : currentTopic === 'mistakes' ? t('mistakesBank')
+    : topicMeta(TOPICS[currentTopic], 'label');
+  if (pct === 100) return t('msg100', topicLabel);
+  if (pct >= 80) return t('msg80');
+  if (pct >= 60) return t('msg60');
+  if (pct >= 40) return t('msg40');
+  return t('msg0');
+}
+
+function renderWrongList() {
+  const reviewEl = document.getElementById('wrongReview');
+  const listEl = document.getElementById('wrongList');
+  listEl.innerHTML = '';
+
+  if (wrongQuestions.length === 0) {
+    reviewEl.style.display = 'none';
+    return;
+  }
+  wrongQuestions.forEach((q, i) => {
+    const item = document.createElement('div');
+    item.className = 'wrong-item';
+    item.innerHTML = `
+      <div class="wrong-item-num">FAIL #${i + 1}</div>
+      <div class="wrong-item-body">
+        <div class="wrong-item-q">${qText(q)}</div>
+        <div class="wrong-item-answer">
+          <span class="wrong-item-answer-label">${t('correctAnswerLabel')}</span>
+          <span class="wrong-item-answer-text">${qOption(q, q.c)}</span>
+        </div>
+        <div class="wrong-item-exp">${qExp(q)}</div>
+      </div>
+    `;
+    listEl.appendChild(item);
+  });
+  reviewEl.style.display = 'block';
+}
+
 function showResults(finishedEarly) {
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('resultsScreen').style.display = 'flex';
 
   const finishBtn = document.getElementById('finishBtn');
-  finishBtn.textContent = '← Головна';
   finishBtn.onclick = goHome;
+  finishBtn.textContent = t('home');
 
   const done = finishedEarly ? current : current + 1;
   const pct = done > 0 ? Math.round(correctCount / done * 100) : 0;
+  lastResultPct = pct;
 
   const resultPercentEl = document.getElementById('resultPercent');
   resultPercentEl.textContent = pct + '%';
@@ -1293,44 +1451,10 @@ function showResults(finishedEarly) {
   document.getElementById('resSkipped').textContent = questions.length - done;
   document.getElementById('progressFill').style.width = '100%';
 
-  const topicLabel = currentTopic === 'mock' ? 'Mock Interview'
-    : currentTopic === 'mistakes' ? 'Банк помилок'
-    : TOPICS[currentTopic].label;
-  let msg = '';
-  if (pct === 100) msg = 'Ідеальний результат — ' + topicLabel + ' від зубів відлітає!';
-  else if (pct >= 80) msg = 'Відмінно, тема добре засвоєна.';
-  else if (pct >= 60) msg = 'Непогано, але є що повторити.';
-  else if (pct >= 40) msg = 'Варто переглянути документацію.';
-  else msg = 'Рекомендуємо детально вивчити тему.';
-  document.getElementById('resultMsg').textContent = msg;
+  document.getElementById('resultMsg').textContent = resultMessage(pct);
   saveStats(currentTopic, pct);
 
-  const reviewEl = document.getElementById('wrongReview');
-  const listEl = document.getElementById('wrongList');
-  listEl.innerHTML = '';
-
-  if (wrongQuestions.length > 0) {
-    wrongQuestions.forEach((q, i) => {
-      const correctAnswer = q.o[q.c];
-      const item = document.createElement('div');
-      item.className = 'wrong-item';
-      item.innerHTML = `
-        <div class="wrong-item-num">FAIL #${i + 1}</div>
-        <div class="wrong-item-body">
-          <div class="wrong-item-q">${q.q}</div>
-          <div class="wrong-item-answer">
-            <span class="wrong-item-answer-label">Правильна відповідь:</span>
-            <span class="wrong-item-answer-text">${correctAnswer}</span>
-          </div>
-          <div class="wrong-item-exp">${q.e}</div>
-        </div>
-      `;
-      listEl.appendChild(item);
-    });
-    reviewEl.style.display = 'block';
-  } else {
-    reviewEl.style.display = 'none';
-  }
+  renderWrongList();
 }
 
 // ─── Event Listeners ──────────────────────────────
@@ -1381,15 +1505,50 @@ document.getElementById('restartBtn').addEventListener('click', goHome);
   document.getElementById('starsContainer').addEventListener('mouseleave', () => setStars(rating));
 
   submit.addEventListener('click', () => {
-    const stars_label = rating ? `${rating}/5 зірок` : 'без оцінки';
+    const starsLabel = rating ? t('fbStars', rating) : t('fbNoRating');
     const comment = textarea.value.trim();
-    const body = encodeURIComponent(`Оцінка: ${stars_label}\n\n${comment || '(без коментаря)'}`);
-    window.location.href = `mailto:y.myzuka@gmail.com?subject=${encodeURIComponent('QA Quiz — відгук')}&body=${body}`;
+    const body = encodeURIComponent(`${t('fbRating')}: ${starsLabel}\n\n${comment || t('fbNoComment')}`);
+    window.location.href = `mailto:y.myzuka@gmail.com?subject=${encodeURIComponent(t('fbMailSubject'))}&body=${body}`;
     closeModal();
   });
 })();
 
+// ─── Language Switcher ────────────────────────────
+function refreshQuestionLanguage() {
+  const q = questions[current];
+  if (!q) return;
+  document.getElementById('specDescribe').textContent = topicMeta(TOPICS[q._topicKey], 'label');
+  document.getElementById('questionText').textContent = qText(q);
+  document.querySelectorAll('#optionsContainer .option').forEach(btn => {
+    const origIdx = parseInt(btn.dataset.origIdx, 10);
+    const textEl = btn.querySelector('.option-text');
+    if (textEl) textEl.textContent = formatOptionText(qOption(q, origIdx), currentLabelMap);
+  });
+  if (answered) document.getElementById('feedbackBox').textContent = qExp(q);
+  const nextBtn = document.getElementById('nextBtn');
+  if (nextBtn.style.display !== 'none') {
+    nextBtn.innerHTML = !answered ? t('submitAnswer')
+      : current < questions.length - 1 ? t('nextQuestion') : t('viewReport');
+  }
+}
+
+function refreshResultsLanguage() {
+  if (lastResultPct === null) return;
+  document.getElementById('resultMsg').textContent = resultMessage(lastResultPct);
+  renderWrongList();
+}
+
+document.getElementById('langBtn').addEventListener('click', () => {
+  lang = lang === 'uk' ? 'en' : 'uk';
+  localStorage.setItem('qa_quiz_lang', lang);
+  applyStaticI18n();
+  if (document.getElementById('startScreen').style.display !== 'none') buildTopicCards();
+  else if (document.getElementById('quizScreen').style.display !== 'none') refreshQuestionLanguage();
+  else if (document.getElementById('resultsScreen').style.display !== 'none') refreshResultsLanguage();
+});
+
 // ─── Init ─────────────────────────────────────────
+applyStaticI18n();
 buildTopicCards();
 renderTopicPicker();
 trackStandaloneOpen();
