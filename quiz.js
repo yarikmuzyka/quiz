@@ -805,6 +805,7 @@ const TOPICS = {
   sql: {
     label: 'SQL та бази даних',
     en: { label: 'SQL & Databases' },
+    isNew: true,
     badge: '90 запитань · Бази даних для QA',
     desc: 'SELECT, JOIN, агрегати, підзапити, транзакції, індекси, нормалізація та перевірка даних тестувальником.',
     code: ['SELECT u.name,','  COUNT(o.id) AS cnt','FROM users u','LEFT JOIN orders o','  ON o.user_id = u.id','GROUP BY u.name','HAVING COUNT(o.id) > 5;'],
@@ -917,6 +918,7 @@ const TOPICS = {
   pythonqa: {
     label: 'Python для QA',
     en: { label: 'Python for QA' },
+    isNew: true,
     badge: '100 запитань · Python + pytest',
     desc: 'Основи мови, колекції, функції, ООП, виключення, pytest, requests, віртуальні середовища та автоматизація.',
     code: ['@pytest.fixture','def user():','    return create_user()','','def test_login(user):','    resp = login(user)','    assert resp.ok'],
@@ -1432,9 +1434,10 @@ function buildTopicCards() {
     const statusLabel = best === null ? '····' : status === 'pass' ? 'PASS' : 'FAIL';
     const row = document.createElement('button');
     row.className = 'spec-row';
+    const newTag = topic.isNew && count === 0 ? '<span class="spec-new-tag">new</span>' : '';
     row.innerHTML = `
       <span class="spec-status ${status}">${statusLabel}</span>
-      <span class="spec-topic-name">${SPEC_NAMES[key] || key}</span>
+      <span class="spec-topic-name">${SPEC_NAMES[key] || key}${newTag}</span>
       <span class="spec-progress"><i style="width:${best !== null ? best : 0}%"></i></span>
       <span class="spec-pct">${best !== null ? best + '%' : '—'}</span>
     `;
