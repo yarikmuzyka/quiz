@@ -780,6 +780,20 @@ html, body {
 
 .spec-pct { width: 38px; text-align: right; color: var(--text3); font-size: 0.8rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
+.spec-new-tag {
+  display: inline-block;
+  margin-left: 0.6rem;
+  padding: 0.05rem 0.4rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 3px;
+  vertical-align: 1px;
+}
+
 /* ─── QUESTION TOPIC (mock mode inline in spec-file line) ─── */
 .question-topic-tag { display: none; }
 
