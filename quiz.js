@@ -1140,7 +1140,12 @@ const I18N = {
   },
 };
 
-let lang = localStorage.getItem('qa_quiz_lang') === 'en' ? 'en' : 'uk';
+// English by default; Ukrainian for uk-locale browsers. An explicit
+// toggle choice (stored in localStorage) always wins.
+const storedLang = localStorage.getItem('qa_quiz_lang');
+let lang = storedLang === 'uk' || storedLang === 'en'
+  ? storedLang
+  : ((navigator.language || '').toLowerCase().startsWith('uk') ? 'uk' : 'en');
 
 function t(key, ...args) {
   const dict = I18N[lang] || I18N.uk;
