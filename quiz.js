@@ -1193,12 +1193,8 @@ function formatOptionText(text, originalToDisplayLabel) {
   });
 }
 
-function trackEvent(name) {
-  const payload = {
-    path: `pwa/${name}`,
-    title: `PWA: ${name}`,
-    event: true
-  };
+function trackHit(path, title) {
+  const payload = { path, title, event: true };
 
   if (window.goatcounter && typeof window.goatcounter.count === 'function') {
     window.goatcounter.count(payload);
@@ -1215,6 +1211,10 @@ function trackEvent(name) {
       clearInterval(timer);
     }
   }, 100);
+}
+
+function trackEvent(name) {
+  trackHit(`pwa/${name}`, `PWA: ${name}`);
 }
 
 function isStandalonePwa() {
@@ -1462,6 +1462,7 @@ function startQuiz(topicKey, count) {
     : `run --topic ${topicKey}`;
   document.getElementById('logoTopic').textContent = cmd;
 
+  trackHit(`topic/${topicKey}/start`, `Topic start: ${topicKey}`);
   renderQuestion();
 }
 
@@ -1690,6 +1691,10 @@ function showResults(finishedEarly) {
 
   document.getElementById('resultMsg').textContent = resultMessage(pct);
   saveStats(currentTopic, pct);
+
+  if (done > 0) {
+    trackHit(`topic/${currentTopic}/finish`, `Topic finish: ${currentTopic}`);
+  }
 
   renderWrongList();
 }
