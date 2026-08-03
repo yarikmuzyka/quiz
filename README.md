@@ -1,75 +1,83 @@
 # QA Quiz
 
-Інтерактивний квіз для підготовки до технічного інтервʼю QA-інженера. 10 тем, 840+ запитань, статистика прогресу. Двомовний: українська та англійська (перемикач `--lang` у хедері).
+**English | [Українська](README.uk.md)**
 
-## Запуск
+Interactive quiz for QA engineer interview preparation. 10 topics, 844 questions, progress tracking. Fully bilingual — English and Ukrainian, switchable with the `--lang` toggle in the header.
 
-### Варіант 1 — Python
-```bash
-python3 -m http.server 8080
-```
-Відкрий: http://localhost:8080
+**Try it live: [yarikmuzyka.github.io/quiz](https://yarikmuzyka.github.io/quiz/)** — free, no signup, works offline as a PWA.
 
-### Варіант 2 — Node.js
-```bash
-npx serve .
-```
-Відкрий: http://localhost:3000
+![QA Quiz dashboard](og-image.png)
 
-### Варіант 3 — просто відкрити файл
-Двічі клікни на `index.html` — відкриється у браузері.  
-(Шрифти завантажуються з Google Fonts, потрібен інтернет)
+## Features
 
-## Теми
+- **Bilingual (i18n)** — the entire UI and all 844 questions in both English and Ukrainian; switch anywhere, even mid-question, choice persists between sessions
+- **Mock Interview Mode** — 100 random questions across all topics, simulating a real interview
+- **Mistake bank (spaced repetition)** — questions you got wrong persist between sessions; a dedicated `rerun --failed` mode on the dashboard, questions drop out after 2 correct answers in a row
+- **Explanations everywhere** — every question comes with a short explanation, not just the correct answer
+- **Dashboard** — best score, sessions played, and per-topic progress rendered as a CI test-runner spec list with PASS/FAIL statuses
+- **Build badge on results** — a shields.io-style `PASSED · A` / `FAILED · F` grade after every run
+- **Failures log** — after finishing, review every missed question with the correct answer and explanation
+- **Fisher-Yates shuffle** — questions and answer options are reshuffled on every run
+- **Finish anytime** — the score is calculated against the questions you actually answered
+- **Local-first** — all progress lives in `localStorage`; no accounts, no tracking of personal data
+- **Responsive** — works well on mobile
 
-| Тема | Запитань |
-|------|----------|
+## Topics
+
+| Topic | Questions |
+|-------|-----------|
 | Selenide | 107 |
 | QA Automation | 105 |
-| Python для QA | 100 |
+| Python for QA | 100 |
 | REST Assured | 98 |
 | Playwright + TS | 93 |
 | Java Core | 92 |
-| SQL та бази даних | 90 |
-| Системний дизайн | 59 |
-| Основи тестування | 55 |
-| AI у тестуванні | 45 |
+| SQL & Databases | 90 |
+| System Design | 59 |
+| Testing Basics | 55 |
+| AI in Testing | 45 |
 
-Разом: **844** запитання, кожне доступне українською та англійською.
+**844 questions total**, every single one available in both languages.
 
-## Фічі
+## Running locally
 
-- **Двомовність (i18n)** — повний переклад UI та всіх питань англійською; мова перемикається кнопкою `--lang` будь-де, навіть посеред питання, і зберігається між сесіями
-- **Mock Interview Mode** — 100 рандомних питань з усіх тем, симуляція реального інтервʼю
-- **Банк помилок (spaced repetition)** — питання, на яких помилився, зберігаються між сесіями; окремий режим "Повторити помилки" на дашборді, питання зникають з банку після 2 правильних відповідей поспіль
-- **Dashboard** — сайдбар зі статистикою: кращий результат, кількість сесій і прогрес по кожній темі
-- **Медалі** — золото (90%+), срібло (80–89%), бронза (75–79%) після завершення квізу
-- **Перегляд помилок** — після фінішу показує всі питання де помилився з правильною відповіддю і поясненням
-- **Fisher-Yates shuffle** — питання і варіанти відповідей перемішуються при кожному старті
-- **Кнопка «Фініш»** — зупинись будь-коли, результат рахується відносно пройдених питань
-- **Збереження статистики** — результати зберігаються у `localStorage`, прогрес не зникає між сесіями
-- **Прогрес-бар і лічильник** у хедері під час квізу
-- **Адаптивний дизайн** — коректно працює на мобільних пристроях
+### Option 1 — Python
+```bash
+python3 -m http.server 8080
+```
+Open http://localhost:8080
 
-## Структура
+### Option 2 — Node.js
+```bash
+npx serve .
+```
+Open http://localhost:3000
+
+### Option 3 — just open the file
+Double-click `index.html` — it opens in the browser.
+(Fonts load from Google Fonts, so internet is required on first load.)
+
+## Project structure
 
 ```
-├── index.html   — розмітка
-├── style.css    — стилі (CI Console theme)
-├── quiz.js      — логіка + банк питань (uk/en)
+├── index.html   — markup
+├── style.css    — styles (CI Console theme)
+├── quiz.js      — logic + question bank (en/uk)
 ├── sw.js        — service worker (PWA, network-first)
 ├── tools/
-│   ├── apply-translations.mjs   — вставка перекладів у банк
-│   └── translations/*.json      — файли перекладів по темах
+│   ├── apply-translations.mjs   — inserts translations into the bank
+│   └── translations/*.json      — per-topic translation files
 └── README.md
 ```
 
-### Як додати/оновити переклади питань
+No frameworks, no build step — vanilla JS/HTML/CSS served as a static page.
 
-Переклади лежать у `tools/translations/<тема>.json` (масив `{q, o, e}` у порядку банку). Вставка:
+### Adding or updating question translations
+
+Translations live in `tools/translations/<topic>.json` (an array of `{q, o, e}` in bank order). Apply them with:
 
 ```bash
 node tools/apply-translations.mjs tools/translations/selenide.json
 ```
 
-Скрипт ідемпотентний: вже перекладені записи пропускає, при розбіжності кількостей — падає з помилкою.
+The script is idempotent: already-translated entries are skipped, and a count mismatch fails loudly.
