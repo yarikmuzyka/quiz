@@ -2116,7 +2116,11 @@ function showResults(finishedEarly) {
   document.getElementById('progressFill').style.width = '100%';
 
   document.getElementById('resultMsg').textContent = resultMessage(pct);
-  document.getElementById('shareBadgeBtn').style.display = done > 0 ? 'inline-flex' : 'none';
+
+  const shareBadgeBtn = document.getElementById('shareBadgeBtn');
+  shareBadgeBtn.disabled = false;
+  shareBadgeBtn.style.display = done > 0 ? 'inline-flex' : 'none';
+  shareBadgeBtn.querySelector('span').textContent = t('shareBadge');
   saveStats(currentTopic, pct);
 
   if (done > 0) {
