@@ -204,6 +204,7 @@ html, body {
 }
 .start-btn:hover { background: var(--accent2); transform: translateY(-1px); }
 .start-btn:active { transform: translateY(0); }
+.start-btn:disabled { opacity: 0.72; cursor: wait; transform: none; }
 .btn-arrow { font-size: 1.05rem; }
 
 /* ─── QUESTION (rendered as a spec assertion block) ─── */
@@ -395,6 +396,18 @@ html, body {
 .run-row .v { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 .run-row .v.pass { color: var(--correct); }
 .run-row .v.fail { color: var(--danger); }
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.result-action-btn {
+  min-width: 190px;
+}
 
 /* ─── COUNT PICKER ─── */
 .count-options {
@@ -819,4 +832,6 @@ html, body {
   .ci-action { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
   .ci-action .go { align-self: flex-start; }
   .spec-progress { width: 60px; }
+  .result-actions { flex-direction: column; align-items: stretch; }
+  .result-action-btn { width: 100%; min-width: 0; justify-content: space-between; }
 }

@@ -1082,8 +1082,14 @@ const I18N = {
     nextQuestion: '$ наступне <span>→</span>',
     viewReport: '$ переглянути результат <span>→</span>',
     chooseTopic: 'Обрати тему',
+    shareBadge: '$ share --badge',
+    shareBadgeBusy: '$ rendering...',
     correctAnswerLabel: 'Правильна відповідь:',
     mistakesBank: 'Банк помилок',
+    mockInterview: 'Mock Interview',
+    shareCardCta: 'Поділись результатом підготовки',
+    shareCardFoot: 'Без реєстрації · Працює офлайн',
+    scanToTry: 'scan to try',
     msg100: label => `Ідеальний результат — ${label} від зубів відлітає!`,
     msg80: 'Відмінно, тема добре засвоєна.',
     msg60: 'Непогано, але є що повторити.',
@@ -1119,8 +1125,14 @@ const I18N = {
     nextQuestion: '$ next <span>→</span>',
     viewReport: '$ view report <span>→</span>',
     chooseTopic: 'Choose topic',
+    shareBadge: '$ share --badge',
+    shareBadgeBusy: '$ rendering...',
     correctAnswerLabel: 'Correct answer:',
     mistakesBank: 'Mistake bank',
+    mockInterview: 'Mock Interview',
+    shareCardCta: 'Share your interview prep result',
+    shareCardFoot: 'No signup · Works offline',
+    scanToTry: 'scan to try',
     msg100: label => `Perfect score — you know ${label} inside out!`,
     msg80: 'Excellent — this topic is well covered.',
     msg60: 'Not bad, but worth a review.',
@@ -1172,6 +1184,7 @@ function applyStaticI18n() {
   document.getElementById('feedbackText').placeholder = t('fbPlaceholder');
   document.getElementById('feedbackSubmitBtn').textContent = t('fbSubmit');
   document.querySelector('#restartBtn span').textContent = t('chooseTopic');
+  document.querySelector('#shareBadgeBtn span').textContent = t('shareBadge');
   const finishBtn = document.getElementById('finishBtn');
   finishBtn.textContent = finishBtn.onclick ? t('home') : t('finish');
 }
@@ -1602,7 +1615,7 @@ function submitAnswer() {
 }
 
 // ─── Result Badge (shields.io-style CI badge) ─────
-function getResultBadge(pct) {
+function getResultMeta(pct) {
   let grade, pass;
   if (pct === 100) { grade = 'A+'; pass = true; }
   else if (pct >= 90) { grade = 'A'; pass = true; }
@@ -1610,7 +1623,11 @@ function getResultBadge(pct) {
   else if (pct >= 75) { grade = 'C'; pass = true; }
   else if (pct >= 60) { grade = 'D'; pass = false; }
   else { grade = 'F'; pass = false; }
-  const status = pass ? 'PASSED' : 'FAILED';
+  return { grade, pass, status: pass ? 'PASSED' : 'FAILED' };
+}
+
+function getResultBadge(pct) {
+  const { grade, pass, status } = getResultMeta(pct);
   return `<span class="b-label">qa-quiz</span><span class="b-value ${pass ? 'pass' : 'fail'}">${status} · ${grade}</span>`;
 }
 
@@ -1623,6 +1640,7 @@ function goHome() {
   finishBtn.onclick = null;
   finishBtn.textContent = t('finish');
   lastResultPct = null;
+  lastResult = null;
   buildTopicCards();
   renderTopicPicker();
   document.getElementById('startScreen').style.display = 'flex';
@@ -1630,9 +1648,10 @@ function goHome() {
 
 // ─── Show Results ─────────────────────────────────
 let lastResultPct = null;
+let lastResult = null;
 
 function resultMessage(pct) {
-  const topicLabel = currentTopic === 'mock' ? 'Mock Interview'
+  const topicLabel = currentTopic === 'mock' ? t('mockInterview')
     : currentTopic === 'mistakes' ? t('mistakesBank')
     : topicMeta(TOPICS[currentTopic], 'label');
   if (pct === 100) return t('msg100', topicLabel);
@@ -1640,6 +1659,400 @@ function resultMessage(pct) {
   if (pct >= 60) return t('msg60');
   if (pct >= 40) return t('msg40');
   return t('msg0');
+}
+
+function getResultTopicLabel(topicKey) {
+  if (topicKey === 'mock') return t('mockInterview');
+  if (topicKey === 'mistakes') return t('mistakesBank');
+  return TOPICS[topicKey] ? topicMeta(TOPICS[topicKey], 'label') : topicKey;
+}
+
+function getResultSpecName(topicKey) {
+  if (topicKey === 'mock') return 'mock-interview.spec';
+  if (topicKey === 'mistakes') return 'rerun-failed.spec';
+  return SPEC_NAMES[topicKey] || `${topicKey}.spec`;
+}
+
+function getResultCommand(topicKey, total) {
+  if (topicKey === 'mock') return `run --mock --count ${total}`;
+  if (topicKey === 'mistakes') return `rerun --failed --count ${total}`;
+  return `run ${getResultSpecName(topicKey)} --count ${total}`;
+}
+
+function roundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
+function drawText(ctx, text, x, y, opts = {}) {
+  ctx.fillStyle = opts.color || '#E4E1D8';
+  ctx.font = `${opts.weight || 400} ${opts.size || 32}px "JetBrains Mono", ui-monospace, monospace`;
+  ctx.textAlign = opts.align || 'left';
+  ctx.textBaseline = opts.baseline || 'alphabetic';
+  ctx.fillText(text, x, y);
+}
+
+const SHARE_BADGE_URL = 'https://yarikmuzyka.github.io/quiz/?ref=badge';
+
+function createQrCode(text) {
+  const version = 4;
+  const size = version * 4 + 17;
+  const dataCodewords = 80;
+  const ecCodewords = 20;
+  const matrix = Array.from({ length: size }, () => Array(size).fill(false));
+  const reserved = Array.from({ length: size }, () => Array(size).fill(false));
+
+  function setFunctionModule(x, y, dark) {
+    if (x < 0 || y < 0 || x >= size || y >= size) return;
+    matrix[y][x] = dark;
+    reserved[y][x] = true;
+  }
+
+  function drawFinder(x, y) {
+    for (let dy = -1; dy <= 7; dy++) {
+      for (let dx = -1; dx <= 7; dx++) {
+        const xx = x + dx;
+        const yy = y + dy;
+        const inFinder = dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6;
+        const dark = inFinder && (dx === 0 || dx === 6 || dy === 0 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4));
+        setFunctionModule(xx, yy, dark);
+      }
+    }
+  }
+
+  function drawAlignment(cx, cy) {
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        setFunctionModule(cx + dx, cy + dy, dist !== 1);
+      }
+    }
+  }
+
+  function appendBits(bits, value, length) {
+    for (let i = length - 1; i >= 0; i--) bits.push((value >>> i) & 1);
+  }
+
+  function gfMultiply(x, y) {
+    let z = 0;
+    for (let i = 7; i >= 0; i--) {
+      z = (z << 1) ^ ((z >>> 7) * 0x11D);
+      z ^= ((y >>> i) & 1) * x;
+    }
+    return z & 0xFF;
+  }
+
+  function rsDivisor(degree) {
+    const result = Array(degree).fill(0);
+    result[degree - 1] = 1;
+    let root = 1;
+    for (let i = 0; i < degree; i++) {
+      for (let j = 0; j < degree; j++) {
+        result[j] = gfMultiply(result[j], root);
+        if (j + 1 < degree) result[j] ^= result[j + 1];
+      }
+      root = gfMultiply(root, 2);
+    }
+    return result;
+  }
+
+  function rsRemainder(data, divisor) {
+    const result = Array(divisor.length).fill(0);
+    data.forEach(byte => {
+      const factor = byte ^ result.shift();
+      result.push(0);
+      divisor.forEach((coef, i) => {
+        result[i] ^= gfMultiply(coef, factor);
+      });
+    });
+    return result;
+  }
+
+  function maskBit(mask, x, y) {
+    if (mask === 0) return (x + y) % 2 === 0;
+    if (mask === 1) return y % 2 === 0;
+    if (mask === 2) return x % 3 === 0;
+    if (mask === 3) return (x + y) % 3 === 0;
+    if (mask === 4) return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0;
+    if (mask === 5) return ((x * y) % 2) + ((x * y) % 3) === 0;
+    if (mask === 6) return (((x * y) % 2) + ((x * y) % 3)) % 2 === 0;
+    return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0;
+  }
+
+  function formatBits(mask) {
+    const data = (1 << 3) | mask; // Error correction level L.
+    let rem = data << 10;
+    for (let i = 14; i >= 10; i--) {
+      if (((rem >>> i) & 1) !== 0) rem ^= 0x537 << (i - 10);
+    }
+    return ((data << 10) | rem) ^ 0x5412;
+  }
+
+  function drawFormatBits(mask) {
+    const bits = formatBits(mask);
+    for (let i = 0; i <= 5; i++) setFunctionModule(8, i, ((bits >>> i) & 1) !== 0);
+    setFunctionModule(8, 7, ((bits >>> 6) & 1) !== 0);
+    setFunctionModule(8, 8, ((bits >>> 7) & 1) !== 0);
+    setFunctionModule(7, 8, ((bits >>> 8) & 1) !== 0);
+    for (let i = 9; i < 15; i++) setFunctionModule(14 - i, 8, ((bits >>> i) & 1) !== 0);
+    for (let i = 0; i < 8; i++) setFunctionModule(size - 1 - i, 8, ((bits >>> i) & 1) !== 0);
+    for (let i = 8; i < 15; i++) setFunctionModule(8, size - 15 + i, ((bits >>> i) & 1) !== 0);
+    setFunctionModule(8, size - 8, true);
+  }
+
+  function penalty(m) {
+    let score = 0;
+    for (let y = 0; y < size; y++) {
+      let runColor = m[y][0], run = 1;
+      for (let x = 1; x < size; x++) {
+        if (m[y][x] === runColor) run++;
+        else {
+          if (run >= 5) score += run - 2;
+          runColor = m[y][x];
+          run = 1;
+        }
+      }
+      if (run >= 5) score += run - 2;
+    }
+    for (let x = 0; x < size; x++) {
+      let runColor = m[0][x], run = 1;
+      for (let y = 1; y < size; y++) {
+        if (m[y][x] === runColor) run++;
+        else {
+          if (run >= 5) score += run - 2;
+          runColor = m[y][x];
+          run = 1;
+        }
+      }
+      if (run >= 5) score += run - 2;
+    }
+    for (let y = 0; y < size - 1; y++) {
+      for (let x = 0; x < size - 1; x++) {
+        const color = m[y][x];
+        if (color === m[y][x + 1] && color === m[y + 1][x] && color === m[y + 1][x + 1]) score += 3;
+      }
+    }
+    const pattern = [true, false, true, true, true, false, true, false, false, false, false];
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x <= size - pattern.length; x++) {
+        if (pattern.every((v, i) => m[y][x + i] === v)) score += 40;
+        if (pattern.every((v, i) => m[y][x + pattern.length - 1 - i] === v)) score += 40;
+      }
+    }
+    for (let x = 0; x < size; x++) {
+      for (let y = 0; y <= size - pattern.length; y++) {
+        if (pattern.every((v, i) => m[y + i][x] === v)) score += 40;
+        if (pattern.every((v, i) => m[y + pattern.length - 1 - i][x] === v)) score += 40;
+      }
+    }
+    const dark = m.flat().filter(Boolean).length;
+    score += Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+    return score;
+  }
+
+  drawFinder(0, 0);
+  drawFinder(size - 7, 0);
+  drawFinder(0, size - 7);
+  drawAlignment(26, 26);
+  for (let i = 8; i < size - 8; i++) {
+    setFunctionModule(i, 6, i % 2 === 0);
+    setFunctionModule(6, i, i % 2 === 0);
+  }
+  drawFormatBits(0);
+
+  const bytes = Array.from(new TextEncoder().encode(text));
+  if (bytes.length > 78) throw new Error('QR payload is too long for version 4-L');
+  const bits = [];
+  appendBits(bits, 0x4, 4);
+  appendBits(bits, bytes.length, 8);
+  bytes.forEach(byte => appendBits(bits, byte, 8));
+  appendBits(bits, 0, Math.min(4, dataCodewords * 8 - bits.length));
+  while (bits.length % 8 !== 0) bits.push(0);
+
+  const data = [];
+  for (let i = 0; i < bits.length; i += 8) data.push(parseInt(bits.slice(i, i + 8).join(''), 2));
+  for (let pad = 0xEC; data.length < dataCodewords; pad ^= 0xFD) data.push(pad);
+
+  const codewords = data.concat(rsRemainder(data, rsDivisor(ecCodewords)));
+  let bitIndex = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right--;
+    for (let vert = 0; vert < size; vert++) {
+      const y = ((right + 1) & 2) === 0 ? size - 1 - vert : vert;
+      for (let x = right; x >= right - 1; x--) {
+        if (reserved[y][x]) continue;
+        matrix[y][x] = bitIndex < codewords.length * 8 && (((codewords[bitIndex >>> 3] >>> (7 - (bitIndex & 7))) & 1) !== 0);
+        bitIndex++;
+      }
+    }
+  }
+
+  const baseMatrix = matrix.map(row => row.slice());
+  const baseReserved = reserved.map(row => row.slice());
+  let bestMatrix = null;
+  let bestPenalty = Infinity;
+  for (let mask = 0; mask < 8; mask++) {
+    const candidate = baseMatrix.map(row => row.slice());
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        if (!baseReserved[y][x] && maskBit(mask, x, y)) candidate[y][x] = !candidate[y][x];
+      }
+    }
+    for (let y = 0; y < size; y++) reserved[y] = baseReserved[y].slice();
+    for (let y = 0; y < size; y++) matrix[y] = candidate[y];
+    drawFormatBits(mask);
+    const scored = matrix.map(row => row.slice());
+    const p = penalty(scored);
+    if (p < bestPenalty) {
+      bestPenalty = p;
+      bestMatrix = scored;
+    }
+  }
+
+  return bestMatrix;
+}
+
+function drawQrCode(ctx, matrix, x, y, moduleSize, padding = 8) {
+  const total = matrix.length * moduleSize;
+  roundedRect(ctx, x - padding, y - padding, total + padding * 2, total + padding * 2, 8);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  ctx.fillStyle = '#0C0F14';
+  matrix.forEach((row, rowIndex) => {
+    row.forEach((dark, colIndex) => {
+      if (!dark) return;
+      ctx.fillRect(x + colIndex * moduleSize, y + rowIndex * moduleSize, moduleSize, moduleSize);
+    });
+  });
+  return total;
+}
+
+async function createResultBadgeBlob(result) {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  const ctx = canvas.getContext('2d');
+  const meta = getResultMeta(result.pct);
+  const colors = {
+    bg: '#0C0F14',
+    panel: '#12161D',
+    panel2: '#171C24',
+    border: '#333A46',
+    text: '#E4E1D8',
+    muted: '#9AA3B2',
+    accent: '#E8A33D',
+    pass: '#4FA872',
+    fail: '#D9645A',
+  };
+
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = 'rgba(99, 107, 120, 0.18)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= canvas.width; x += 72) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= canvas.height; y += 72) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  roundedRect(ctx, 82, 64, 1036, 502, 16);
+  ctx.fillStyle = colors.panel;
+  ctx.fill();
+  ctx.strokeStyle = colors.border;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  drawText(ctx, 'QA Quiz', 126, 132, { size: 42, weight: 700, color: colors.accent });
+  drawText(ctx, `qa@quiz:~$ ${getResultCommand(result.topicKey, result.total)}`, 126, 202, { size: 30, color: colors.text });
+
+  roundedRect(ctx, 126, 238, 948, 178, 10);
+  ctx.fillStyle = colors.panel2;
+  ctx.fill();
+  ctx.strokeStyle = meta.pass ? colors.pass : colors.fail;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  drawText(ctx, meta.status, 168, 327, { size: 58, weight: 700, color: meta.pass ? colors.pass : colors.fail });
+  drawText(ctx, `${result.pct}%`, 594, 327, { size: 58, weight: 700, color: meta.pass ? colors.pass : colors.fail, align: 'center' });
+  drawText(ctx, `Grade ${meta.grade}`, 1034, 327, { size: 50, weight: 700, color: meta.pass ? colors.pass : colors.fail, align: 'right' });
+
+  drawText(ctx, `passed: ${result.correct}`, 168, 386, { size: 28, weight: 700, color: colors.pass });
+  drawText(ctx, `failed: ${result.wrong}`, 520, 386, { size: 28, weight: 700, color: colors.fail });
+  drawText(ctx, `total: ${result.total}`, 728, 386, { size: 28, weight: 700, color: colors.text });
+
+  drawText(ctx, t('shareCardCta'), 126, 472, { size: 30, weight: 700, color: colors.accent });
+  drawText(ctx, getResultTopicLabel(result.topicKey), 126, 512, { size: 24, color: colors.text });
+
+  const qrMatrix = createQrCode(SHARE_BADGE_URL);
+  drawQrCode(ctx, qrMatrix, 963, 436, 3.135, 7.6);
+
+  drawText(ctx, t('shareCardFoot'), 126, 548, { size: 22, color: colors.muted });
+  drawText(ctx, 'yarikmuzyka.github.io/quiz', 868, 548, { size: 22, color: colors.muted, align: 'right' });
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Canvas export failed'));
+    }, 'image/png');
+  });
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function shareResultBadge() {
+  if (!lastResult || lastResult.total === 0) return;
+
+  const btn = document.getElementById('shareBadgeBtn');
+  const label = btn.querySelector('span');
+  const originalLabel = label.textContent;
+  btn.disabled = true;
+  label.textContent = t('shareBadgeBusy');
+
+  try {
+    const blob = await createResultBadgeBlob(lastResult);
+    const filename = `qa-quiz-${lastResult.topicKey}-${lastResult.pct}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      await navigator.share({
+        files: [file],
+        title: 'QA Quiz',
+        text: `${lastResult.pct}% · ${getResultSpecName(lastResult.topicKey)}`,
+      });
+      trackEvent('badge_shared');
+    } else {
+      downloadBlob(blob, filename);
+      trackEvent('badge_downloaded');
+    }
+  } catch (error) {
+    if (error && error.name !== 'AbortError') console.error('Badge sharing failed', error);
+  } finally {
+    btn.disabled = false;
+    label.textContent = originalLabel;
+  }
 }
 
 function renderWrongList() {
@@ -1681,6 +2094,14 @@ function showResults(finishedEarly) {
   const done = finishedEarly ? current : current + 1;
   const pct = done > 0 ? Math.round(correctCount / done * 100) : 0;
   lastResultPct = pct;
+  lastResult = {
+    topicKey: currentTopic,
+    pct,
+    correct: correctCount,
+    wrong: wrongCount,
+    total: done,
+    skipped: questions.length - done,
+  };
 
   const resultPercentEl = document.getElementById('resultPercent');
   resultPercentEl.textContent = pct + '%';
@@ -1695,6 +2116,7 @@ function showResults(finishedEarly) {
   document.getElementById('progressFill').style.width = '100%';
 
   document.getElementById('resultMsg').textContent = resultMessage(pct);
+  document.getElementById('shareBadgeBtn').style.display = done > 0 ? 'inline-flex' : 'none';
   saveStats(currentTopic, pct);
 
   if (done > 0) {
@@ -1720,6 +2142,7 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 });
 
 document.getElementById('restartBtn').addEventListener('click', goHome);
+document.getElementById('shareBadgeBtn').addEventListener('click', shareResultBadge);
 
 // ─── Feedback Modal ───────────────────────────────
 (function () {
@@ -1782,6 +2205,7 @@ function refreshQuestionLanguage() {
 function refreshResultsLanguage() {
   if (lastResultPct === null) return;
   document.getElementById('resultMsg').textContent = resultMessage(lastResultPct);
+  document.querySelector('#shareBadgeBtn span').textContent = t('shareBadge');
   renderWrongList();
 }
 
