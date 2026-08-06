@@ -2026,6 +2026,8 @@ function downloadBlob(blob, filename) {
 async function shareResultBadge() {
   if (!lastResult || lastResult.total === 0) return;
 
+  trackEvent('badge_share_clicked');
+
   const btn = document.getElementById('shareBadgeBtn');
   const label = btn.querySelector('span');
   const originalLabel = label.textContent;
