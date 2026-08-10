@@ -1060,6 +1060,14 @@ const SPEC_NAMES = {
   pythonqa: 'python-qa.spec',
 };
 
+const TOPIC_GROUPS = [
+  { key: 'foundations', topics: ['qabasics', 'qaautomation'] },
+  { key: 'automation', topics: ['selenide', 'playwright', 'restassured'] },
+  { key: 'languages', topics: ['javacore', 'pythonqa'] },
+  { key: 'backendData', topics: ['sql', 'sysdesign'] },
+  { key: 'modernQa', topics: ['aiqa'] },
+];
+
 // ─── i18n ─────────────────────────────────────────
 // UI strings live here; question banks get optional per-entry `en: {q, o, e}`
 // fields and fall back to Ukrainian until a topic is translated.
@@ -1070,7 +1078,17 @@ const I18N = {
     topicsDone: 'тем пройдено',
     mockSub: (q, t) => `${q}+ питань з усіх ${t} тем`,
     rerunSub: n => `${n} ${n === 1 ? 'питання' : 'питань'}, де ти помилявся`,
-    specsHead: n => `// specs — ${n} файлів`,
+    specsHead: n => `// specs grouped — ${n} файлів`,
+    groupFoundations: 'основи тестування',
+    groupFoundationsSub: 'база, процеси, стратегія',
+    groupAutomation: 'автоматизація та інструменти',
+    groupAutomationSub: 'UI, API, фреймворки',
+    groupLanguages: 'мови',
+    groupLanguagesSub: 'Java, Python, код для QA',
+    groupBackendData: 'backend та дані',
+    groupBackendDataSub: 'SQL, системний дизайн',
+    groupModernQa: 'modern QA',
+    groupModernQaSub: 'AI та нові підходи',
     countModalTitle: title => `${title} — кількість питань`,
     countModalLabel: 'Скільки питань пройти?',
     countQuick: 'швидкий раунд',
@@ -1113,7 +1131,17 @@ const I18N = {
     topicsDone: 'topics covered',
     mockSub: (q, t) => `${q}+ questions across all ${t} topics`,
     rerunSub: n => `${n} question${n === 1 ? '' : 's'} you got wrong`,
-    specsHead: n => `// specs — ${n} files`,
+    specsHead: n => `// specs grouped — ${n} files`,
+    groupFoundations: 'testing foundations',
+    groupFoundationsSub: 'basics, process, strategy',
+    groupAutomation: 'automation & tools',
+    groupAutomationSub: 'UI, API, frameworks',
+    groupLanguages: 'languages',
+    groupLanguagesSub: 'Java, Python, QA code',
+    groupBackendData: 'backend & data',
+    groupBackendDataSub: 'SQL, system design',
+    groupModernQa: 'modern QA',
+    groupModernQaSub: 'AI and emerging practice',
     countModalTitle: title => `${title} — question count`,
     countModalLabel: 'How many questions?',
     countQuick: 'quick round',
@@ -1440,27 +1468,48 @@ function buildTopicCards() {
   listHead.textContent = t('specsHead', totalTopics);
   main.appendChild(listHead);
 
-  // Topic spec-list
+  // Topic spec-list grouped by learning area
   const list = document.createElement('div');
-  list.className = 'spec-list';
+  list.className = 'spec-list grouped';
 
-  Object.entries(TOPICS).forEach(([key, topic]) => {
-    const s = stats[key];
-    const count = s ? (s.count || 0) : 0;
-    const best = count && s && s.best != null ? s.best : null;
-    const status = best === null ? 'skip' : best >= 75 ? 'pass' : 'fail';
-    const statusLabel = best === null ? '····' : status === 'pass' ? 'PASS' : 'FAIL';
-    const row = document.createElement('button');
-    row.className = 'spec-row';
-    const newTag = topic.isNew && count === 0 ? '<span class="spec-new-tag">new</span>' : '';
-    row.innerHTML = `
-      <span class="spec-status ${status}">${statusLabel}</span>
-      <span class="spec-topic-name">${SPEC_NAMES[key] || key}${newTag}</span>
-      <span class="spec-progress"><i style="width:${best !== null ? best : 0}%"></i></span>
-      <span class="spec-pct">${best !== null ? best + '%' : '—'}</span>
+  TOPIC_GROUPS.forEach(group => {
+    const groupTopics = group.topics.filter(key => TOPICS[key]);
+    if (groupTopics.length === 0) return;
+
+    const groupPlayed = groupTopics.filter(key => stats[key] && stats[key].count > 0).length;
+    const section = document.createElement('section');
+    section.className = 'spec-group';
+    section.innerHTML = `
+      <div class="spec-group-head">
+        <div>
+          <div class="spec-group-title">${t(`group${group.key[0].toUpperCase()}${group.key.slice(1)}`)}</div>
+          <div class="spec-group-sub">${t(`group${group.key[0].toUpperCase()}${group.key.slice(1)}Sub`)}</div>
+        </div>
+        <div class="spec-group-count">${groupPlayed}/${groupTopics.length}</div>
+      </div>
     `;
-    row.addEventListener('click', () => openCountModal(key));
-    list.appendChild(row);
+
+    groupTopics.forEach(key => {
+      const topic = TOPICS[key];
+      const s = stats[key];
+      const count = s ? (s.count || 0) : 0;
+      const best = count && s && s.best != null ? s.best : null;
+      const status = best === null ? 'skip' : best >= 75 ? 'pass' : 'fail';
+      const statusLabel = best === null ? '····' : status === 'pass' ? 'PASS' : 'FAIL';
+      const row = document.createElement('button');
+      row.className = 'spec-row';
+      const newTag = topic.isNew && count === 0 ? '<span class="spec-new-tag">new</span>' : '';
+      row.innerHTML = `
+        <span class="spec-status ${status}">${statusLabel}</span>
+        <span class="spec-topic-name">${SPEC_NAMES[key] || key}${newTag}</span>
+        <span class="spec-progress"><i style="width:${best !== null ? best : 0}%"></i></span>
+        <span class="spec-pct">${best !== null ? best + '%' : '—'}</span>
+      `;
+      row.addEventListener('click', () => openCountModal(key));
+      section.appendChild(row);
+    });
+
+    list.appendChild(section);
   });
 
   main.appendChild(list);
