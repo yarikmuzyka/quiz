@@ -1779,11 +1779,23 @@ function startQuiz(topicKey, count) {
 
 // ─── Count Picker Modal ───────────────────────────
 let _pendingTopic = null;
+const LIMITED_COUNT_TOPICS = new Set(['restapi', 'selenium', 'cypress', 'appium']);
+const DEFAULT_COUNT_OPTIONS = [10, 50, 100];
+const LIMITED_COUNT_OPTIONS = [10, 25, 50];
+
+function syncCountOptions(topicKey) {
+  const options = LIMITED_COUNT_TOPICS.has(topicKey) ? LIMITED_COUNT_OPTIONS : DEFAULT_COUNT_OPTIONS;
+  document.querySelectorAll('#countModal .count-opt').forEach((btn, i) => {
+    btn.dataset.n = options[i];
+    btn.querySelector('.count-opt-n').textContent = options[i];
+  });
+}
 
 function openCountModal(topicKey) {
   _pendingTopic = topicKey;
   const title = topicKey === 'mock' ? 'Mock Interview' : topicMeta(TOPICS[topicKey], 'label');
   document.getElementById('countModalTitle').textContent = t('countModalTitle', title);
+  syncCountOptions(topicKey);
   document.getElementById('countModal').style.display = 'flex';
 }
 
