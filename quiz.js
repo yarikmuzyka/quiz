@@ -1847,7 +1847,7 @@ function renderMockTopicList() {
       const row = document.createElement('label');
       row.className = 'mock-topic-row';
       row.innerHTML = `
-        <input type="checkbox" value="${key}" checked>
+        <input type="checkbox" value="${key}">
         <span class="mock-topic-name">${topicMeta(topic, 'label')}</span>
         <span class="mock-topic-count">${topic.bank.length}</span>
       `;
