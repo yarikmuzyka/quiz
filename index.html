@@ -86,6 +86,94 @@
       </div>
     </div>
 
+    <!-- BUG HUNT SCREEN -->
+    <div class="screen bug-hunt-screen" id="bugHuntScreen" style="display:none">
+      <div class="bug-shell">
+        <div class="bug-mission-bar">
+          <div class="bug-brand">
+            <span class="bug-brand-title">QA Mission Console</span>
+            <span class="bug-brand-sub">qa@quiz:~$ run bug-hunt</span>
+          </div>
+          <div class="bug-stat">
+            <span class="bug-stat-label">time</span>
+            <span class="bug-stat-value" id="bugTimer">10:00</span>
+          </div>
+          <div class="bug-stat">
+            <span class="bug-stat-label">found</span>
+            <span class="bug-stat-value bug-found-value" id="bugFoundCounter">0/10</span>
+          </div>
+          <div class="bug-category-strip" id="bugCategoryStrip"></div>
+          <button class="bug-report-top" id="bugReportTopBtn">Report bug</button>
+          <button class="bug-end-top" id="bugEndBtn">End session</button>
+        </div>
+
+        <div class="bug-layout">
+          <aside class="bug-sidebar">
+            <div class="bug-panel">
+              <div class="bug-panel-title">MISSION</div>
+              <p>Find and report 10 seeded bugs in the demo shop. Every bug counts.</p>
+            </div>
+            <div class="bug-panel">
+              <div class="bug-panel-title">FILTERS</div>
+              <label class="bug-filter-label" for="bugSearchInput">Search</label>
+              <input class="bug-input" id="bugSearchInput" type="search" placeholder="Search products...">
+              <label class="bug-filter-label" for="bugCategoryFilter">Category</label>
+              <select class="bug-input" id="bugCategoryFilter">
+                <option value="all">All categories</option>
+                <option value="electronics">Electronics</option>
+                <option value="home">Home</option>
+                <option value="accessories">Accessories</option>
+              </select>
+              <label class="bug-filter-label" for="bugMaxPrice">Max price</label>
+              <input class="bug-input" id="bugMaxPrice" type="number" value="150" min="0">
+              <label class="bug-filter-check">
+                <input id="bugInStockOnly" type="checkbox">
+                <span>In stock only</span>
+              </label>
+            </div>
+            <div class="bug-panel">
+              <div class="bug-panel-title">CONSOLE</div>
+              <div class="bug-console" id="bugConsoleLog"></div>
+            </div>
+          </aside>
+
+          <main class="bug-shop">
+            <div class="bug-shop-toolbar">
+              <div>
+                <div class="bug-shop-title">QA Demo Shop</div>
+                <div class="bug-shop-sub" id="bugShopSub">All products</div>
+              </div>
+              <select class="bug-input bug-sort" id="bugSortSelect">
+                <option value="featured">Featured</option>
+                <option value="az">Sort A-Z</option>
+                <option value="priceLow">Price low to high</option>
+              </select>
+            </div>
+            <div class="bug-product-grid" id="bugProductGrid"></div>
+          </main>
+
+          <aside class="bug-cart">
+            <div class="bug-cart-head">
+              <span>Your Cart</span>
+              <span class="bug-cart-count" id="bugCartCount">0</span>
+            </div>
+            <div class="bug-cart-items" id="bugCartItems"></div>
+            <div class="bug-cart-summary">
+              <div><span>Subtotal</span><strong id="bugSubtotal">$0.00</strong></div>
+              <div><span>Discount</span><strong class="bug-discount" id="bugDiscount">-$0.00</strong></div>
+              <div><span>Total</span><strong id="bugTotal">$0.00</strong></div>
+            </div>
+            <button class="bug-checkout" id="bugCheckoutBtn">Checkout</button>
+            <button class="bug-report-main" id="bugReportMainBtn">Report bug</button>
+            <div class="bug-found-log">
+              <div class="bug-panel-title">FOUND BUGS LOG</div>
+              <div id="bugFoundLog"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+
     <!-- RESULTS SCREEN -->
     <div class="screen" id="resultsScreen" style="display:none">
       <div class="results-content">
@@ -107,6 +195,43 @@
           <div class="wrong-review-title">✗ FAILURES</div>
           <div id="wrongList"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUG REPORT MODAL -->
+  <div class="modal-overlay" id="bugReportModal" style="display:none">
+    <div class="modal bug-report-modal">
+      <div class="modal-header">
+        <div class="modal-title">Report bug</div>
+        <button class="modal-close" id="bugReportClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-label">What did you find?</div>
+        <textarea class="modal-textarea" id="bugReportText" placeholder="Example: Sort A-Z sorts products in the wrong direction"></textarea>
+        <div class="bug-report-feedback" id="bugReportFeedback"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="bugReportSubmit">Submit bug</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUG HUNT RESULT MODAL -->
+  <div class="modal-overlay" id="bugResultModal" style="display:none">
+    <div class="modal bug-result-modal">
+      <div class="modal-header">
+        <div class="modal-title">Bug Hunt report</div>
+        <button class="modal-close" id="bugResultClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="bug-result-score" id="bugResultScore">0/10</div>
+        <div class="bug-result-reason" id="bugResultReason">session ended</div>
+        <div class="modal-label">Found bugs</div>
+        <div class="bug-result-list" id="bugResultFound"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="bugResultHome">Back to menu</button>
       </div>
     </div>
   </div>

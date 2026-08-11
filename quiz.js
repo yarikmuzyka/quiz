@@ -1321,6 +1321,7 @@ const I18N = {
     sessionsPlayed: 'сесій зіграно',
     topicsDone: 'тем пройдено',
     mockSub: (q, t) => `${q}+ питань з усіх ${t} тем`,
+    bugHuntSub: '10 хвилин · 10 seeded bugs · demo shop',
     rerunSub: n => `${n} ${n === 1 ? 'питання' : 'питань'}, де ти помилявся`,
     specsHead: n => `// specs grouped — ${n} файлів`,
     groupFoundations: 'основи тестування',
@@ -1381,6 +1382,7 @@ const I18N = {
     sessionsPlayed: 'sessions played',
     topicsDone: 'topics covered',
     mockSub: (q, t) => `${q}+ questions across all ${t} topics`,
+    bugHuntSub: '10 minutes · 10 seeded bugs · demo shop',
     rerunSub: n => `${n} question${n === 1 ? '' : 's'} you got wrong`,
     specsHead: n => `// specs grouped — ${n} files`,
     groupFoundations: 'testing foundations',
@@ -1609,6 +1611,308 @@ function renderTopicPicker() {
   picker.style.display = 'flex';
 }
 
+// ─── Bug Hunt Mode ────────────────────────────────
+const BUG_HUNT_DURATION = 10 * 60;
+const BUG_HUNT_PRODUCTS = [
+  { id: 'mug', name: 'Ceramic Mug', category: 'home', price: 12.99, rating: 4.7, inStock: true, icon: '☕' },
+  { id: 'backpack', name: 'Everyday Backpack', category: 'accessories', price: 49.99, rating: 4.4, inStock: true, icon: '🎒' },
+  { id: 'headphones', name: 'Noise Canceling Headphones', category: 'electronics', price: 129.99, rating: 4.8, inStock: true, icon: '🎧' },
+  { id: 'plant', name: 'Desk Plant', category: 'home', price: 9.99, rating: 4.1, inStock: false, icon: '🪴' },
+  { id: 'bottle', name: 'Insulated Bottle', category: 'accessories', price: 24.99, rating: 4.5, inStock: true, icon: '🧴' },
+  { id: 'notebook', name: 'QA Notebook', category: 'accessories', price: 14.99, rating: 4.3, inStock: true, icon: '📓' },
+  { id: 'keyboard', name: 'MechMaster Keyboard', category: 'electronics', price: 99.99, rating: 4.6, inStock: true, icon: '⌨️' },
+  { id: 'lamp', name: 'LED Desk Lamp', category: 'home', price: 34.99, rating: 4.2, inStock: true, icon: '💡' },
+];
+
+const BUG_HUNT_BUGS = [
+  { id: 'search-case', category: 'logic', title: 'Search is case-sensitive', keywords: ['search', 'case', 'sensitive', 'uppercase', 'lowercase'] },
+  { id: 'price-boundary', category: 'logic', title: 'Max price filter excludes boundary value', keywords: ['price', 'filter', 'boundary', 'max', 'equal'] },
+  { id: 'sort-az', category: 'logic', title: 'Sort A-Z is reversed', keywords: ['sort', 'a-z', 'az', 'alphabet', 'reverse'] },
+  { id: 'stock-filter', category: 'logic', title: 'In-stock filter still shows unavailable product', keywords: ['stock', 'filter', 'unavailable', 'out of stock', 'plant'] },
+  { id: 'out-of-stock-add', category: 'validation', title: 'Out-of-stock item can be added to cart', keywords: ['stock', 'add', 'cart', 'disabled', 'plant', 'out of stock'] },
+  { id: 'cart-count', category: 'ux', title: 'Cart count is off by one', keywords: ['cart count', 'counter', 'count', 'off by one', 'badge'] },
+  { id: 'discount', category: 'logic', title: 'Discount is calculated as fixed amount', keywords: ['discount', 'calculation', 'total', 'wrong', 'fixed'] },
+  { id: 'empty-checkout', category: 'validation', title: 'Checkout is allowed with empty cart', keywords: ['checkout', 'empty cart', 'empty', 'validation'] },
+  { id: 'image-alt', category: 'a11y', title: 'Product visuals do not expose useful alt text', keywords: ['alt', 'accessibility', 'a11y', 'image', 'visual'] },
+  { id: 'mobile-overflow', category: 'visual', title: 'Product grid overflows on narrow screens', keywords: ['mobile', 'responsive', 'overflow', 'layout', 'grid'] },
+];
+
+let bugHuntState = null;
+let bugHuntTimerId = null;
+
+function resetBugHuntTimer() {
+  if (bugHuntTimerId) clearInterval(bugHuntTimerId);
+  bugHuntTimerId = null;
+}
+
+function formatBugTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function addBugConsoleLine(text, type = '') {
+  const log = document.getElementById('bugConsoleLog');
+  const line = document.createElement('div');
+  line.className = `bug-console-line ${type}`;
+  line.textContent = text;
+  log.prepend(line);
+}
+
+function getBugCategoryCounts() {
+  return BUG_HUNT_BUGS.reduce((acc, bug) => {
+    if (!acc[bug.category]) acc[bug.category] = { total: 0, found: 0 };
+    acc[bug.category].total++;
+    if (bugHuntState && bugHuntState.found.has(bug.id)) acc[bug.category].found++;
+    return acc;
+  }, {});
+}
+
+function updateBugHuntHud() {
+  if (!bugHuntState) return;
+  document.getElementById('bugTimer').textContent = formatBugTime(bugHuntState.remaining);
+  document.getElementById('bugFoundCounter').textContent = `${bugHuntState.found.size}/${BUG_HUNT_BUGS.length}`;
+
+  const strip = document.getElementById('bugCategoryStrip');
+  strip.innerHTML = '';
+  const counts = getBugCategoryCounts();
+  Object.entries(counts).forEach(([category, data]) => {
+    const item = document.createElement('div');
+    item.className = 'bug-category-pill';
+    item.innerHTML = `<span>${category}</span><strong>${data.found}/${data.total}</strong>`;
+    strip.appendChild(item);
+  });
+}
+
+function renderBugProducts() {
+  if (!bugHuntState) return;
+  const search = document.getElementById('bugSearchInput').value;
+  const category = document.getElementById('bugCategoryFilter').value;
+  const maxPrice = parseFloat(document.getElementById('bugMaxPrice').value || '9999');
+  const inStockOnly = document.getElementById('bugInStockOnly').checked;
+  const sort = document.getElementById('bugSortSelect').value;
+
+  let products = BUG_HUNT_PRODUCTS.filter(product => {
+    const matchesSearch = !search || product.name.includes(search); // seeded bug: case-sensitive search.
+    const matchesCategory = category === 'all' || product.category === category;
+    const matchesPrice = product.price < maxPrice; // seeded bug: boundary value is excluded.
+    const matchesStock = !inStockOnly || product.inStock || product.id === 'plant'; // seeded bug: out-of-stock plant leaks through.
+    return matchesSearch && matchesCategory && matchesPrice && matchesStock;
+  });
+
+  if (sort === 'az') products = products.sort((a, b) => b.name.localeCompare(a.name)); // seeded bug: reversed A-Z.
+  if (sort === 'priceLow') products = products.sort((a, b) => a.price - b.price);
+
+  document.getElementById('bugShopSub').textContent = `Showing ${products.length} of ${BUG_HUNT_PRODUCTS.length} products`;
+  const grid = document.getElementById('bugProductGrid');
+  grid.innerHTML = '';
+
+  products.forEach(product => {
+    const card = document.createElement('article');
+    card.className = 'bug-product-card';
+    card.innerHTML = `
+      <div class="bug-product-media" role="img">${product.icon}</div>
+      <div class="bug-product-body">
+        <div class="bug-product-name">${product.name}</div>
+        <div class="bug-product-meta">${product.category} · ★ ${product.rating}</div>
+        <div class="bug-product-price">$${product.price.toFixed(2)}</div>
+        <div class="bug-product-stock">${product.inStock ? 'In stock' : 'Out of stock'}</div>
+        <button class="bug-add-btn" data-id="${product.id}" aria-disabled="${product.inStock ? 'false' : 'true'}">Add to cart</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  document.querySelectorAll('.bug-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => addBugCartItem(btn.dataset.id));
+  });
+}
+
+function addBugCartItem(productId) {
+  if (!bugHuntState) return;
+  const product = BUG_HUNT_PRODUCTS.find(item => item.id === productId);
+  if (!product) return;
+  bugHuntState.cart.push(product);
+  addBugConsoleLine(`cart:add ${product.name}`, product.inStock ? 'pass' : 'fail');
+  renderBugCart();
+}
+
+function removeBugCartItem(index) {
+  if (!bugHuntState) return;
+  const [removed] = bugHuntState.cart.splice(index, 1);
+  addBugConsoleLine(`cart:remove ${removed ? removed.name : 'item'}`);
+  renderBugCart();
+}
+
+function renderBugCart() {
+  if (!bugHuntState) return;
+  const items = document.getElementById('bugCartItems');
+  items.innerHTML = '';
+  const cart = bugHuntState.cart;
+  document.getElementById('bugCartCount').textContent = cart.length > 0 ? cart.length + 1 : 0; // seeded bug: off-by-one count.
+
+  if (cart.length === 0) {
+    items.innerHTML = '<div class="bug-cart-empty">Cart is empty</div>';
+  } else {
+    cart.forEach((product, index) => {
+      const item = document.createElement('div');
+      item.className = 'bug-cart-item';
+      item.innerHTML = `
+        <div class="bug-cart-item-name">${product.name}</div>
+        <button class="bug-remove-btn" data-index="${index}">×</button>
+        <div class="bug-cart-item-price">$${product.price.toFixed(2)}</div>
+      `;
+      items.appendChild(item);
+    });
+  }
+
+  document.querySelectorAll('.bug-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeBugCartItem(parseInt(btn.dataset.index, 10)));
+  });
+
+  const subtotal = cart.reduce((sum, product) => sum + product.price, 0);
+  const discount = subtotal > 50 ? 5 : 0; // seeded bug: fixed discount instead of expected 10%.
+  document.getElementById('bugSubtotal').textContent = `$${subtotal.toFixed(2)}`;
+  document.getElementById('bugDiscount').textContent = `-$${discount.toFixed(2)}`;
+  document.getElementById('bugTotal').textContent = `$${Math.max(0, subtotal - discount).toFixed(2)}`;
+}
+
+function renderBugFoundLog() {
+  if (!bugHuntState) return;
+  const log = document.getElementById('bugFoundLog');
+  log.innerHTML = '';
+  if (bugHuntState.found.size === 0) {
+    log.innerHTML = '<div class="bug-cart-empty">No bugs reported yet</div>';
+    return;
+  }
+  Array.from(bugHuntState.found).forEach(id => {
+    const bug = BUG_HUNT_BUGS.find(item => item.id === id);
+    if (!bug) return;
+    const entry = document.createElement('div');
+    entry.className = 'bug-found-entry';
+    entry.innerHTML = `<strong>${bug.category}</strong> · ${bug.title}`;
+    log.appendChild(entry);
+  });
+}
+
+function openBugReportModal() {
+  document.getElementById('bugReportText').value = '';
+  const feedback = document.getElementById('bugReportFeedback');
+  feedback.className = 'bug-report-feedback';
+  feedback.textContent = '';
+  document.getElementById('bugReportModal').style.display = 'flex';
+}
+
+function closeBugReportModal() {
+  document.getElementById('bugReportModal').style.display = 'none';
+}
+
+function closeBugResultModal() {
+  document.getElementById('bugResultModal').style.display = 'none';
+  goHome();
+}
+
+function submitBugReport() {
+  if (!bugHuntState) return;
+  const text = document.getElementById('bugReportText').value.trim().toLowerCase();
+  const feedback = document.getElementById('bugReportFeedback');
+
+  if (!text) {
+    feedback.className = 'bug-report-feedback fail';
+    feedback.textContent = 'Add a short summary first.';
+    return;
+  }
+
+  const match = BUG_HUNT_BUGS.find(bug => {
+    if (bugHuntState.found.has(bug.id)) return false;
+    return bug.keywords.some(keyword => text.includes(keyword));
+  });
+
+  if (!match) {
+    feedback.className = 'bug-report-feedback fail';
+    feedback.textContent = 'Not matched yet. Be more specific.';
+    addBugConsoleLine('report:not-matched', 'fail');
+    return;
+  }
+
+  bugHuntState.found.add(match.id);
+  feedback.className = 'bug-report-feedback pass';
+  feedback.textContent = `Found: ${match.category} · ${match.title}`;
+  addBugConsoleLine(`report:found ${match.id}`, 'pass');
+  updateBugHuntHud();
+  renderBugFoundLog();
+
+  if (bugHuntState.found.size === BUG_HUNT_BUGS.length) {
+    setTimeout(() => finishBugHunt('all bugs found'), 500);
+  }
+}
+
+function startBugHuntTimer() {
+  resetBugHuntTimer();
+  bugHuntTimerId = setInterval(() => {
+    if (!bugHuntState) return;
+    bugHuntState.remaining--;
+    updateBugHuntHud();
+    if (bugHuntState.remaining <= 0) finishBugHunt('time is up');
+  }, 1000);
+}
+
+function startBugHunt() {
+  bugHuntState = {
+    remaining: BUG_HUNT_DURATION,
+    cart: [],
+    found: new Set(),
+  };
+
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('headerMeta').style.display = 'none';
+  document.getElementById('bugHuntScreen').style.display = 'block';
+  document.getElementById('logoTopic').textContent = 'run --bug-hunt';
+  document.getElementById('bugConsoleLog').innerHTML = '';
+  addBugConsoleLine('mission:started', 'pass');
+  addBugConsoleLine('tip: use Report bug when you find an issue');
+
+  document.getElementById('bugSearchInput').value = '';
+  document.getElementById('bugCategoryFilter').value = 'all';
+  document.getElementById('bugMaxPrice').value = '150';
+  document.getElementById('bugInStockOnly').checked = false;
+  document.getElementById('bugSortSelect').value = 'featured';
+
+  renderBugProducts();
+  renderBugCart();
+  renderBugFoundLog();
+  updateBugHuntHud();
+  startBugHuntTimer();
+  trackHit('mode/bug-hunt/start', 'Bug Hunt start');
+}
+
+function finishBugHunt(reason = 'session ended') {
+  if (!bugHuntState) return;
+  const found = bugHuntState.found.size;
+  const total = BUG_HUNT_BUGS.length;
+  const foundList = document.getElementById('bugResultFound');
+  resetBugHuntTimer();
+  addBugConsoleLine(`mission:finished ${reason}`, found >= 7 ? 'pass' : 'fail');
+  document.getElementById('bugReportModal').style.display = 'none';
+  document.getElementById('bugResultScore').textContent = `${found}/${total}`;
+  document.getElementById('bugResultReason').textContent = reason;
+  foundList.innerHTML = '';
+
+  BUG_HUNT_BUGS.forEach(bug => {
+    if (!bugHuntState.found.has(bug.id)) return;
+    const item = document.createElement('div');
+    item.className = 'bug-result-item found';
+    item.innerHTML = `<strong>${bug.category}</strong>${bug.title}`;
+    foundList.appendChild(item);
+  });
+
+  if (!foundList.children.length) foundList.innerHTML = '<div class="bug-cart-empty">No bugs found yet</div>';
+  document.getElementById('bugResultModal').style.display = 'flex';
+  trackHit('mode/bug-hunt/finish', 'Bug Hunt finish');
+}
+
 function getStats() {
   try {
     return JSON.parse(localStorage.getItem('qa_quiz_stats') || '{}');
@@ -1697,8 +2001,32 @@ function buildTopicCards() {
   wrapper.appendChild(topBar);
 
   // ─── Main content ───
+  const content = document.createElement('div');
+  content.className = 'dash-content';
+
   const main = document.createElement('div');
   main.className = 'dash-main';
+
+  const bugHuntRail = document.createElement('div');
+  bugHuntRail.className = 'dash-bug-rail';
+  bugHuntRail.innerHTML = `
+    <button class="bug-rail-toggle" id="bugRailToggle" aria-expanded="false" aria-controls="bugRailPanel">
+      <span class="bug-rail-new">NEW</span>
+      <span class="bug-rail-label">Bug Hunt</span>
+      <span class="bug-rail-arrow">→</span>
+    </button>
+    <aside class="bug-rail-panel" id="bugRailPanel">
+      <div class="bug-panel-kicker">special mode</div>
+      <div class="bug-panel-title">Bug Hunt</div>
+      <div class="bug-panel-copy">Find seeded bugs in a demo shop before time runs out.</div>
+      <div class="bug-panel-meta">
+        <strong>10:00</strong>
+        <strong>0/10</strong>
+      </div>
+      <div class="bug-panel-hints">filters · sorting · cart · validation · UX</div>
+      <button class="bug-panel-start" id="bugRailStart">START MISSION →</button>
+    </aside>
+  `;
 
   // ▸ run --mock full-suite
   const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
@@ -1779,8 +2107,19 @@ function buildTopicCards() {
   });
 
   main.appendChild(list);
-  wrapper.appendChild(main);
+
+  content.appendChild(bugHuntRail);
+  content.appendChild(main);
+  wrapper.appendChild(content);
   picker.appendChild(wrapper);
+
+  const bugRailToggle = document.getElementById('bugRailToggle');
+  bugRailToggle.addEventListener('click', () => {
+    const isOpen = content.classList.toggle('bug-rail-open');
+    bugRailToggle.setAttribute('aria-expanded', String(isOpen));
+    bugHuntRail.querySelector('.bug-rail-arrow').textContent = isOpen ? '×' : '→';
+  });
+  document.getElementById('bugRailStart').addEventListener('click', startBugHunt);
 }
 
 // ─── Start Quiz ───────────────────────────────────
@@ -2060,6 +2399,11 @@ function getResultBadge(pct) {
 }
 
 function goHome() {
+  resetBugHuntTimer();
+  bugHuntState = null;
+  document.getElementById('bugHuntScreen').style.display = 'none';
+  document.getElementById('bugReportModal').style.display = 'none';
+  document.getElementById('bugResultModal').style.display = 'none';
   document.getElementById('resultsScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('headerMeta').style.display = 'none';
@@ -2577,6 +2921,29 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 
 document.getElementById('restartBtn').addEventListener('click', goHome);
 document.getElementById('shareBadgeBtn').addEventListener('click', shareResultBadge);
+
+document.getElementById('bugSearchInput').addEventListener('input', renderBugProducts);
+document.getElementById('bugCategoryFilter').addEventListener('change', renderBugProducts);
+document.getElementById('bugMaxPrice').addEventListener('input', renderBugProducts);
+document.getElementById('bugInStockOnly').addEventListener('change', renderBugProducts);
+document.getElementById('bugSortSelect').addEventListener('change', renderBugProducts);
+document.getElementById('bugReportTopBtn').addEventListener('click', openBugReportModal);
+document.getElementById('bugReportMainBtn').addEventListener('click', openBugReportModal);
+document.getElementById('bugReportClose').addEventListener('click', closeBugReportModal);
+document.getElementById('bugReportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bugReportModal')) closeBugReportModal();
+});
+document.getElementById('bugReportSubmit').addEventListener('click', submitBugReport);
+document.getElementById('bugEndBtn').addEventListener('click', () => finishBugHunt('manual stop'));
+document.getElementById('bugResultClose').addEventListener('click', closeBugResultModal);
+document.getElementById('bugResultHome').addEventListener('click', closeBugResultModal);
+document.getElementById('bugResultModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bugResultModal')) closeBugResultModal();
+});
+document.getElementById('bugCheckoutBtn').addEventListener('click', () => {
+  const empty = !bugHuntState || bugHuntState.cart.length === 0;
+  addBugConsoleLine(empty ? 'checkout:started empty-cart' : 'checkout:started email-validation-skipped', empty ? 'fail' : 'pass');
+});
 
 // ─── Feedback Modal ───────────────────────────────
 (function () {
