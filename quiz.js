@@ -1368,6 +1368,13 @@ const I18N = {
     fbStars: n => `${n}/5 зірок`,
     fbNoRating: 'без оцінки',
     fbNoComment: '(без коментаря)',
+    mockTopicsTitle: 'Mock Interview — теми',
+    mockTopicsLabel: 'Обери теми для mock interview',
+    mockTopicsAll: 'select all',
+    mockTopicsClear: 'clear',
+    mockTopicsNext: 'Далі →',
+    mockTopicsSummary: (selected, total, questions) => `${selected}/${total} тем · ${questions} питань доступно`,
+    mockTopicsEmpty: 'Обери хоча б одну тему',
   },
   en: {
     bestScore: 'best score',
@@ -1421,6 +1428,13 @@ const I18N = {
     fbStars: n => `${n}/5 stars`,
     fbNoRating: 'no rating',
     fbNoComment: '(no comment)',
+    mockTopicsTitle: 'Mock Interview — topics',
+    mockTopicsLabel: 'Choose topics for the mock interview',
+    mockTopicsAll: 'select all',
+    mockTopicsClear: 'clear',
+    mockTopicsNext: 'Next →',
+    mockTopicsSummary: (selected, total, questions) => `${selected}/${total} topics · ${questions} questions available`,
+    mockTopicsEmpty: 'Choose at least one topic',
   },
 };
 
@@ -1446,6 +1460,11 @@ function topicMeta(topic, field) { return lang === 'en' && topic.en && topic.en[
 function applyStaticI18n() {
   document.documentElement.lang = lang;
   document.getElementById('langVal').textContent = lang;
+  document.getElementById('mockTopicsTitle').textContent = t('mockTopicsTitle');
+  document.getElementById('mockTopicsLabel').textContent = t('mockTopicsLabel');
+  document.getElementById('mockTopicsAll').textContent = t('mockTopicsAll');
+  document.getElementById('mockTopicsClear').textContent = t('mockTopicsClear');
+  document.getElementById('mockTopicsNextBtn').textContent = t('mockTopicsNext');
   document.querySelector('#countModal .modal-label').textContent = t('countModalLabel');
   const countLabels = [t('countQuick'), t('countStandard'), t('countDeep')];
   document.querySelectorAll('#countModal .count-opt-l').forEach((el, i) => el.textContent = countLabels[i]);
@@ -1536,14 +1555,17 @@ window.addEventListener('appinstalled', () => {
 
 let wrongQuestions = [];
 
-function initQuiz(topicKey, count) {
+function initQuiz(topicKey, count, topicKeys) {
   currentTopic = topicKey;
   wrongQuestions = [];
   if (topicKey === 'mock') {
     const allQuestions = [];
-    Object.entries(TOPICS).forEach(([key, topic]) => {
+    const sourceKeys = topicKeys && topicKeys.length ? topicKeys : Object.keys(TOPICS);
+    sourceKeys.forEach(key => {
+      const topic = TOPICS[key];
+      if (!topic) return;
       topic.bank.forEach((q, idx) => {
-        allQuestions.push({ ...q, _topic: topic.label, _topicKey: key, _idx: idx });
+        allQuestions.push({ ...q, _topic: topicMeta(topic, 'label'), _topicKey: key, _idx: idx });
       });
     });
     questions = shuffle(allQuestions).slice(0, count || 100);
@@ -1689,7 +1711,7 @@ function buildTopicCards() {
     </div>
     <div class="go">RUN →</div>
   `;
-  mockAction.addEventListener('click', () => openCountModal('mock'));
+  mockAction.addEventListener('click', () => openMockTopicsModal());
   main.appendChild(mockAction);
 
   // ▸ rerun --failed (mistake bank)
@@ -1763,7 +1785,8 @@ function buildTopicCards() {
 
 // ─── Start Quiz ───────────────────────────────────
 function startQuiz(topicKey, count) {
-  initQuiz(topicKey, count);
+  initQuiz(topicKey, count, _pendingMockTopics);
+  _pendingMockTopics = null;
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'block';
   document.getElementById('headerMeta').style.display = 'flex';
@@ -1777,6 +1800,96 @@ function startQuiz(topicKey, count) {
   renderQuestion();
 }
 
+// ─── Mock Topic Picker Modal ──────────────────────
+let _pendingMockTopics = null;
+
+function getAllTopicKeys() {
+  return TOPIC_GROUPS.flatMap(group => group.topics).filter(key => TOPICS[key]);
+}
+
+function getSelectedMockTopicKeys() {
+  return Array.from(document.querySelectorAll('#mockTopicList input[type="checkbox"]:checked'))
+    .map(input => input.value)
+    .filter(key => TOPICS[key]);
+}
+
+function getMockQuestionCount(topicKeys) {
+  return topicKeys.reduce((sum, key) => sum + (TOPICS[key] ? TOPICS[key].bank.length : 0), 0);
+}
+
+function updateMockTopicSummary() {
+  const selectedKeys = getSelectedMockTopicKeys();
+  const allKeys = getAllTopicKeys();
+  const questionsAvailable = getMockQuestionCount(selectedKeys);
+  document.getElementById('mockTopicSummary').textContent = selectedKeys.length
+    ? t('mockTopicsSummary', selectedKeys.length, allKeys.length, questionsAvailable)
+    : t('mockTopicsEmpty');
+  document.getElementById('mockTopicsNextBtn').disabled = selectedKeys.length === 0;
+}
+
+function renderMockTopicList() {
+  const list = document.getElementById('mockTopicList');
+  list.innerHTML = '';
+
+  TOPIC_GROUPS.forEach(group => {
+    const groupTopics = group.topics.filter(key => TOPICS[key]);
+    if (groupTopics.length === 0) return;
+
+    const section = document.createElement('section');
+    section.className = 'mock-topic-group';
+    const groupTitle = document.createElement('div');
+    groupTitle.className = 'mock-topic-group-title';
+    groupTitle.textContent = t(`group${group.key[0].toUpperCase()}${group.key.slice(1)}`);
+    section.appendChild(groupTitle);
+
+    groupTopics.forEach(key => {
+      const topic = TOPICS[key];
+      const row = document.createElement('label');
+      row.className = 'mock-topic-row';
+      row.innerHTML = `
+        <input type="checkbox" value="${key}" checked>
+        <span class="mock-topic-name">${topicMeta(topic, 'label')}</span>
+        <span class="mock-topic-count">${topic.bank.length}</span>
+      `;
+      row.querySelector('input').addEventListener('change', updateMockTopicSummary);
+      section.appendChild(row);
+    });
+
+    list.appendChild(section);
+  });
+
+  updateMockTopicSummary();
+}
+
+function openMockTopicsModal() {
+  renderMockTopicList();
+  document.getElementById('mockTopicsModal').style.display = 'flex';
+}
+
+function closeMockTopicsModal() {
+  document.getElementById('mockTopicsModal').style.display = 'none';
+}
+
+document.getElementById('mockTopicsClose').addEventListener('click', closeMockTopicsModal);
+document.getElementById('mockTopicsModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('mockTopicsModal')) closeMockTopicsModal();
+});
+document.getElementById('mockTopicsAll').addEventListener('click', () => {
+  document.querySelectorAll('#mockTopicList input[type="checkbox"]').forEach(input => { input.checked = true; });
+  updateMockTopicSummary();
+});
+document.getElementById('mockTopicsClear').addEventListener('click', () => {
+  document.querySelectorAll('#mockTopicList input[type="checkbox"]').forEach(input => { input.checked = false; });
+  updateMockTopicSummary();
+});
+document.getElementById('mockTopicsNextBtn').addEventListener('click', () => {
+  const selectedKeys = getSelectedMockTopicKeys();
+  if (selectedKeys.length === 0) return;
+  _pendingMockTopics = selectedKeys;
+  closeMockTopicsModal();
+  openCountModal('mock');
+});
+
 // ─── Count Picker Modal ───────────────────────────
 let _pendingTopic = null;
 const LIMITED_COUNT_TOPICS = new Set(['restapi', 'selenium', 'cypress', 'appium']);
@@ -1784,10 +1897,16 @@ const DEFAULT_COUNT_OPTIONS = [10, 50, 100];
 const LIMITED_COUNT_OPTIONS = [10, 25, 50];
 
 function syncCountOptions(topicKey) {
-  const options = LIMITED_COUNT_TOPICS.has(topicKey) ? LIMITED_COUNT_OPTIONS : DEFAULT_COUNT_OPTIONS;
+  const availableCount = topicKey === 'mock' && _pendingMockTopics
+    ? getMockQuestionCount(_pendingMockTopics)
+    : null;
+  const options = LIMITED_COUNT_TOPICS.has(topicKey) || (topicKey === 'mock' && availableCount !== null && availableCount <= 50)
+    ? LIMITED_COUNT_OPTIONS
+    : DEFAULT_COUNT_OPTIONS;
   document.querySelectorAll('#countModal .count-opt').forEach((btn, i) => {
     btn.dataset.n = options[i];
     btn.querySelector('.count-opt-n').textContent = options[i];
+    btn.disabled = availableCount !== null && options[i] > availableCount;
   });
 }
 
@@ -1801,13 +1920,17 @@ function openCountModal(topicKey) {
 
 document.getElementById('countModalClose').addEventListener('click', () => {
   document.getElementById('countModal').style.display = 'none';
+  _pendingMockTopics = null;
 });
 document.getElementById('countModal').addEventListener('click', e => {
-  if (e.target === document.getElementById('countModal'))
+  if (e.target === document.getElementById('countModal')) {
     document.getElementById('countModal').style.display = 'none';
+    _pendingMockTopics = null;
+  }
 });
 document.querySelectorAll('.count-opt').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (btn.disabled) return;
     const n = parseInt(btn.dataset.n);
     document.getElementById('countModal').style.display = 'none';
     startQuiz(_pendingTopic, n);
