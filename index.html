@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#090d14">
-  <meta name="description" content="Free QA interview trainer: 844 questions across 10 topics — Selenium, Playwright, SQL, Python, Java, REST APIs. English & Ukrainian, no signup, works offline.">
+  <meta name="description" content="Free QA interview trainer: 1044 questions across 14 topics — Selenium, Playwright, Cypress, Appium, REST APIs, SQL, Python, Java. English & Ukrainian, no signup, works offline.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="QA Quiz">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,7 +13,7 @@
   <!-- Open Graph / social sharing -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="QA Quiz">
-  <meta property="og:title" content="QA Quiz — 844 interview questions across 10 topics">
+  <meta property="og:title" content="QA Quiz — 1044 interview questions across 14 topics">
   <meta property="og:description" content="Free QA interview trainer with explanations and a spaced-repetition mistake bank. No signup, works offline. English & Ukrainian.">
   <meta property="og:url" content="https://yarikmuzyka.github.io/quiz/">
   <meta property="og:image" content="https://yarikmuzyka.github.io/quiz/og-image.png">
@@ -22,7 +22,7 @@
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="uk_UA">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="QA Quiz — 844 interview questions across 10 topics">
+  <meta name="twitter:title" content="QA Quiz — 1044 interview questions across 14 topics">
   <meta name="twitter:description" content="Free QA interview trainer with explanations and a spaced-repetition mistake bank. No signup, works offline.">
   <meta name="twitter:image" content="https://yarikmuzyka.github.io/quiz/og-image.png">
   <link rel="manifest" href="manifest.webmanifest">
@@ -111,6 +111,28 @@
     </div>
   </div>
 
+  <!-- MOCK TOPIC PICKER MODAL -->
+  <div class="modal-overlay" id="mockTopicsModal" style="display:none">
+    <div class="modal mock-modal">
+      <div class="modal-header">
+        <div class="modal-title" id="mockTopicsTitle">Mock Interview — теми</div>
+        <button class="modal-close" id="mockTopicsClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-label" id="mockTopicsLabel">Обери теми для mock interview</div>
+        <div class="mock-topic-actions">
+          <button type="button" class="mock-topic-action" id="mockTopicsAll">select all</button>
+          <button type="button" class="mock-topic-action" id="mockTopicsClear">clear</button>
+        </div>
+        <div class="mock-topic-list" id="mockTopicList"></div>
+        <div class="mock-topic-summary" id="mockTopicSummary"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="mockTopicsNextBtn">Далі →</button>
+      </div>
+    </div>
+  </div>
+
   <!-- COUNT PICKER MODAL -->
   <div class="modal-overlay" id="countModal" style="display:none">
     <div class="modal">
@@ -125,12 +147,12 @@
             <span class="count-opt-n">10</span>
             <span class="count-opt-l">швидкий раунд</span>
           </button>
-          <button class="count-opt" data-n="25">
-            <span class="count-opt-n">25</span>
-            <span class="count-opt-l">стандартний</span>
-          </button>
           <button class="count-opt" data-n="50">
             <span class="count-opt-n">50</span>
+            <span class="count-opt-l">стандартний</span>
+          </button>
+          <button class="count-opt" data-n="100">
+            <span class="count-opt-n">100</span>
             <span class="count-opt-l">поглиблений</span>
           </button>
         </div>

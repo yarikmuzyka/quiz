@@ -572,6 +572,105 @@ html, body {
 .modal-submit:hover { background: var(--accent2); }
 .modal-submit:disabled { opacity: 0.5; cursor: default; }
 
+/* ─── MOCK TOPIC PICKER ─── */
+.mock-modal { max-width: 680px; }
+
+.mock-topic-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mock-topic-action {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.mock-topic-action:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.mock-topic-list {
+  max-height: min(54vh, 470px);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding-right: 0.25rem;
+}
+
+.mock-topic-group {
+  border-left: 2px solid var(--border);
+  padding-left: 0.75rem;
+}
+
+.mock-topic-group-title {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.mock-topic-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: background 0.12s, color 0.12s;
+}
+.mock-topic-row:hover { background: var(--bg3); color: var(--text); }
+
+.mock-topic-row input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+}
+
+.mock-topic-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.mock-topic-count {
+  color: var(--text3);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mock-topic-summary {
+  min-height: 1.2rem;
+  color: var(--text3);
+  font-size: 0.75rem;
+}
+
+.count-opt:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+.count-opt:disabled:hover {
+  border-color: var(--border2);
+  background: var(--bg3);
+}
+.count-opt:disabled .count-opt-n { color: var(--text3); }
+
 /* ─── WRONG REVIEW (failures log) ─── */
 .wrong-review {
   margin-top: 2.25rem;
