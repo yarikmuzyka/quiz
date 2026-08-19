@@ -1837,7 +1837,7 @@ function closeBugResultModal() {
 
 function restartBugHunt() {
   document.getElementById('bugResultModal').style.display = 'none';
-  startBugHunt();
+  startBugHunt('restart');
 }
 
 function getBugReportScore(bug, text) {
@@ -1902,7 +1902,7 @@ function startBugHuntTimer() {
   }, 1000);
 }
 
-function startBugHunt() {
+function startBugHunt(source = 'menu') {
   bugHuntState = {
     remaining: BUG_HUNT_DURATION,
     cart: [],
@@ -1931,6 +1931,7 @@ function startBugHunt() {
   updateBugHuntHud();
   startBugHuntTimer();
   trackHit('mode/bug-hunt/start', 'Bug Hunt start');
+  trackEvent(source === 'restart' ? 'bug_hunt_restarted' : 'bug_hunt_opened');
 }
 
 function finishBugHunt(reason = 'session ended') {
