@@ -1321,6 +1321,7 @@ const I18N = {
     sessionsPlayed: 'сесій зіграно',
     topicsDone: 'тем пройдено',
     mockSub: (q, t) => `${q}+ питань з усіх ${t} тем`,
+    bugHuntSub: '10 хвилин · 10 seeded bugs · demo shop',
     rerunSub: n => `${n} ${n === 1 ? 'питання' : 'питань'}, де ти помилявся`,
     specsHead: n => `// specs grouped — ${n} файлів`,
     groupFoundations: 'основи тестування',
@@ -1381,6 +1382,7 @@ const I18N = {
     sessionsPlayed: 'sessions played',
     topicsDone: 'topics covered',
     mockSub: (q, t) => `${q}+ questions across all ${t} topics`,
+    bugHuntSub: '10 minutes · 10 seeded bugs · demo shop',
     rerunSub: n => `${n} question${n === 1 ? '' : 's'} you got wrong`,
     specsHead: n => `// specs grouped — ${n} files`,
     groupFoundations: 'testing foundations',
@@ -1609,6 +1611,355 @@ function renderTopicPicker() {
   picker.style.display = 'flex';
 }
 
+// ─── Bug Hunt Mode ────────────────────────────────
+const BUG_HUNT_DURATION = 10 * 60;
+const BUG_HUNT_PRODUCTS = [
+  { id: 'mug', name: 'Ceramic Mug', category: 'home', price: 13, rating: 4.7, inStock: true, icon: '☕' },
+  { id: 'backpack', name: 'Everyday Backpack', category: 'accessories', price: 50, rating: 4.4, inStock: true, icon: '🎒' },
+  { id: 'headphones', name: 'Noise Canceling Headphones', category: 'electronics', price: 130, rating: 4.8, inStock: true, icon: '🎧' },
+  { id: 'plant', name: 'Desk Plant', category: 'home', price: 10, rating: 4.1, inStock: false, icon: '🪴' },
+  { id: 'bottle', name: 'Insulated Bottle', category: 'accessories', price: 25, rating: 4.5, inStock: true, icon: '🧴' },
+  { id: 'notebook', name: 'QA Notebook', category: 'accessories', price: 15, rating: 4.3, inStock: true, icon: '📓' },
+  { id: 'keyboard', name: 'MechMaster Keyboard', category: 'electronics', price: 100, rating: 4.6, inStock: true, icon: '⌨️' },
+  { id: 'lamp', name: 'LED Desk Lamp', category: 'home', price: 35, rating: 4.2, inStock: true, icon: '💡' },
+];
+
+const BUG_HUNT_BUGS = [
+  { id: 'search-case', category: 'logic', title: 'Search is case-sensitive', keywords: ['search', 'case', 'sensitive', 'uppercase', 'lowercase'] },
+  { id: 'price-boundary', category: 'logic', title: 'Max price filter excludes boundary value', keywords: ['price', 'filter', 'boundary', 'max', 'equal'] },
+  { id: 'sort-az', category: 'logic', title: 'Sort A-Z is reversed', keywords: ['sort', 'a-z', 'az', 'alphabet', 'reverse'] },
+  { id: 'stock-filter', category: 'logic', title: 'In-stock filter still shows unavailable product', keywords: ['stock', 'filter', 'unavailable', 'out of stock', 'plant'] },
+  { id: 'out-of-stock-add', category: 'validation', title: 'Out-of-stock item can be added to cart', keywords: ['stock', 'add', 'cart', 'disabled', 'plant', 'out of stock'] },
+  { id: 'cart-count', category: 'ui/ux', title: 'Cart count is off by one', keywords: ['cart count', 'counter', 'count', 'off by one', 'badge'] },
+  { id: 'discount', category: 'logic', title: 'Discount is calculated as fixed amount', keywords: ['discount', 'calculation', 'total', 'wrong', 'fixed'] },
+  { id: 'checkout-console-error', category: 'be qurious', title: 'Console shows checkout error after empty cart checkout', keywords: ['console', 'error', 'fail', 'checkout', 'empty-cart', 'empty cart', 'checkout error'] },
+  { id: 'checkout-active-empty', category: 'ui/ux', title: 'Checkout button looks active when cart is empty', keywords: ['checkout button', 'active', 'disabled', 'empty cart button', 'cart is empty', 'button state', 'looks active', 'ui'] },
+  { id: 'mobile-overflow', category: 'ui/ux', title: 'Product grid overflows on narrow screens', keywords: ['mobile', 'responsive', 'overflow', 'layout', 'grid'] },
+];
+
+let bugHuntState = null;
+let bugHuntTimerId = null;
+let lastBugHuntResult = null;
+
+function getBugHuntStats() {
+  try {
+    return JSON.parse(localStorage.getItem('qa_quiz_bug_hunt_stats') || '{}');
+  } catch { return {}; }
+}
+
+function saveBugHuntStats(found, total) {
+  const stats = getBugHuntStats();
+  const best = Math.max(stats.best || 0, found);
+  localStorage.setItem('qa_quiz_bug_hunt_stats', JSON.stringify({
+    best,
+    last: found,
+    total,
+    count: (stats.count || 0) + 1,
+    updatedAt: new Date().toISOString()
+  }));
+}
+
+function resetBugHuntTimer() {
+  if (bugHuntTimerId) clearInterval(bugHuntTimerId);
+  bugHuntTimerId = null;
+}
+
+function formatBugTime(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function formatBugPrice(value) {
+  return `$${value}`;
+}
+
+function addBugConsoleLine(text, type = '') {
+  const log = document.getElementById('bugConsoleLog');
+  const line = document.createElement('div');
+  line.className = `bug-console-line ${type}`;
+  line.textContent = text;
+  log.prepend(line);
+}
+
+function getBugCategoryCounts() {
+  return BUG_HUNT_BUGS.reduce((acc, bug) => {
+    if (!acc[bug.category]) acc[bug.category] = { total: 0, found: 0 };
+    acc[bug.category].total++;
+    if (bugHuntState && bugHuntState.found.has(bug.id)) acc[bug.category].found++;
+    return acc;
+  }, {});
+}
+
+function updateBugHuntHud() {
+  if (!bugHuntState) return;
+  document.getElementById('bugTimer').textContent = formatBugTime(bugHuntState.remaining);
+  document.getElementById('bugFoundCounter').textContent = `${bugHuntState.found.size}/${BUG_HUNT_BUGS.length}`;
+
+  const strip = document.getElementById('bugCategoryStrip');
+  strip.innerHTML = '';
+  const counts = getBugCategoryCounts();
+  Object.entries(counts).forEach(([category, data]) => {
+    const item = document.createElement('div');
+    item.className = 'bug-category-pill';
+    item.innerHTML = `<span>${category}</span><strong>${data.found}/${data.total}</strong>`;
+    strip.appendChild(item);
+  });
+}
+
+function renderBugProducts() {
+  if (!bugHuntState) return;
+  const search = document.getElementById('bugSearchInput').value;
+  const category = document.getElementById('bugCategoryFilter').value;
+  const maxPrice = parseFloat(document.getElementById('bugMaxPrice').value || '9999');
+  const inStockOnly = document.getElementById('bugInStockOnly').checked;
+  const sort = document.getElementById('bugSortSelect').value;
+
+  let products = BUG_HUNT_PRODUCTS.filter(product => {
+    const matchesSearch = !search || product.name.includes(search); // seeded bug: case-sensitive search.
+    const matchesCategory = category === 'all' || product.category === category;
+    const matchesPrice = product.price < maxPrice; // seeded bug: boundary value is excluded.
+    const matchesStock = !inStockOnly || product.inStock || product.id === 'plant'; // seeded bug: out-of-stock plant leaks through.
+    return matchesSearch && matchesCategory && matchesPrice && matchesStock;
+  });
+
+  if (sort === 'az') products = products.sort((a, b) => b.name.localeCompare(a.name)); // seeded bug: reversed A-Z.
+  if (sort === 'priceLow') products = products.sort((a, b) => a.price - b.price);
+
+  document.getElementById('bugShopSub').textContent = `Showing ${products.length} of ${BUG_HUNT_PRODUCTS.length} products`;
+  const grid = document.getElementById('bugProductGrid');
+  grid.innerHTML = '';
+
+  products.forEach(product => {
+    const card = document.createElement('article');
+    card.className = 'bug-product-card';
+    card.innerHTML = `
+      <div class="bug-product-media" role="img">${product.icon}</div>
+      <div class="bug-product-body">
+        <div class="bug-product-name">${product.name}</div>
+        <div class="bug-product-meta">${product.category} · ★ ${product.rating}</div>
+        <div class="bug-product-price">${formatBugPrice(product.price)}</div>
+        <div class="bug-product-stock">${product.inStock ? 'In stock' : 'Out of stock'}</div>
+        <button class="bug-add-btn" data-id="${product.id}" aria-disabled="${product.inStock ? 'false' : 'true'}">Add to cart</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  document.querySelectorAll('.bug-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => addBugCartItem(btn.dataset.id));
+  });
+}
+
+function addBugCartItem(productId) {
+  if (!bugHuntState) return;
+  const product = BUG_HUNT_PRODUCTS.find(item => item.id === productId);
+  if (!product) return;
+  bugHuntState.cart.push(product);
+  addBugConsoleLine(`cart:add ${product.name}`, product.inStock ? 'pass' : 'fail');
+  renderBugCart();
+}
+
+function removeBugCartItem(index) {
+  if (!bugHuntState) return;
+  const [removed] = bugHuntState.cart.splice(index, 1);
+  addBugConsoleLine(`cart:remove ${removed ? removed.name : 'item'}`);
+  renderBugCart();
+}
+
+function renderBugCart() {
+  if (!bugHuntState) return;
+  const items = document.getElementById('bugCartItems');
+  items.innerHTML = '';
+  const cart = bugHuntState.cart;
+  document.getElementById('bugCartCount').textContent = cart.length > 0 ? cart.length + 1 : 0; // seeded bug: off-by-one count.
+
+  if (cart.length === 0) {
+    items.innerHTML = '<div class="bug-cart-empty">Cart is empty</div>';
+  } else {
+    cart.forEach((product, index) => {
+      const item = document.createElement('div');
+      item.className = 'bug-cart-item';
+      item.innerHTML = `
+        <div class="bug-cart-item-name">${product.name}</div>
+        <button class="bug-remove-btn" data-index="${index}">×</button>
+        <div class="bug-cart-item-price">${formatBugPrice(product.price)}</div>
+      `;
+      items.appendChild(item);
+    });
+  }
+
+  document.querySelectorAll('.bug-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeBugCartItem(parseInt(btn.dataset.index, 10)));
+  });
+
+  const subtotal = cart.reduce((sum, product) => sum + product.price, 0);
+  const discount = subtotal > 50 ? 5 : 0; // seeded bug: fixed discount instead of expected 10%.
+  document.getElementById('bugSubtotal').textContent = formatBugPrice(subtotal);
+  document.getElementById('bugDiscount').textContent = `-${formatBugPrice(discount)}`;
+  document.getElementById('bugTotal').textContent = formatBugPrice(Math.max(0, subtotal - discount));
+}
+
+function renderBugFoundLog() {
+  if (!bugHuntState) return;
+  const log = document.getElementById('bugFoundLog');
+  log.innerHTML = '';
+  if (bugHuntState.found.size === 0) {
+    log.innerHTML = '<div class="bug-cart-empty">No bugs reported yet</div>';
+    return;
+  }
+  Array.from(bugHuntState.found).forEach(id => {
+    const bug = BUG_HUNT_BUGS.find(item => item.id === id);
+    if (!bug) return;
+    const entry = document.createElement('div');
+    entry.className = 'bug-found-entry';
+    entry.innerHTML = `<strong>${bug.category}</strong> · ${bug.title}`;
+    log.appendChild(entry);
+  });
+}
+
+function openBugReportModal() {
+  document.getElementById('bugReportText').value = '';
+  const feedback = document.getElementById('bugReportFeedback');
+  feedback.className = 'bug-report-feedback';
+  feedback.textContent = '';
+  document.getElementById('bugReportModal').style.display = 'flex';
+}
+
+function closeBugReportModal() {
+  document.getElementById('bugReportModal').style.display = 'none';
+}
+
+function closeBugResultModal() {
+  document.getElementById('bugResultModal').style.display = 'none';
+  goHome();
+}
+
+function restartBugHunt() {
+  document.getElementById('bugResultModal').style.display = 'none';
+  startBugHunt();
+}
+
+function getBugReportScore(bug, text) {
+  return bug.keywords.reduce((score, keyword) => {
+    if (!text.includes(keyword)) return score;
+    return score + 1 + Math.min(keyword.length / 10, 2);
+  }, 0);
+}
+
+function submitBugReport() {
+  if (!bugHuntState) return;
+  const text = document.getElementById('bugReportText').value.trim().toLowerCase();
+  const feedback = document.getElementById('bugReportFeedback');
+
+  if (!text) {
+    feedback.className = 'bug-report-feedback fail';
+    feedback.textContent = 'Add a short summary first.';
+    return;
+  }
+
+  const matches = BUG_HUNT_BUGS
+    .map(bug => ({ bug, score: getBugReportScore(bug, text) }))
+    .filter(item => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const duplicate = matches.find(item => bugHuntState.found.has(item.bug.id));
+  if (duplicate && duplicate.score >= (matches[0] ? matches[0].score : 0)) {
+    feedback.className = 'bug-report-feedback fail';
+    feedback.textContent = `Already reported: ${duplicate.bug.title}`;
+    addBugConsoleLine(`report:duplicate ${duplicate.bug.id}`, 'fail');
+    return;
+  }
+
+  const match = matches.find(item => !bugHuntState.found.has(item.bug.id))?.bug;
+
+  if (!match) {
+    feedback.className = 'bug-report-feedback fail';
+    feedback.textContent = 'Not matched yet. Be more specific.';
+    addBugConsoleLine('report:not-matched', 'fail');
+    return;
+  }
+
+  bugHuntState.found.add(match.id);
+  feedback.className = 'bug-report-feedback pass';
+  feedback.textContent = `Found: ${match.category} · ${match.title}`;
+  addBugConsoleLine(`report:found ${match.id}`, 'pass');
+  updateBugHuntHud();
+  renderBugFoundLog();
+
+  if (bugHuntState.found.size === BUG_HUNT_BUGS.length) {
+    setTimeout(() => finishBugHunt('all bugs found'), 500);
+  }
+}
+
+function startBugHuntTimer() {
+  resetBugHuntTimer();
+  bugHuntTimerId = setInterval(() => {
+    if (!bugHuntState) return;
+    bugHuntState.remaining--;
+    updateBugHuntHud();
+    if (bugHuntState.remaining <= 0) finishBugHunt('time is up');
+  }, 1000);
+}
+
+function startBugHunt() {
+  bugHuntState = {
+    remaining: BUG_HUNT_DURATION,
+    cart: [],
+    found: new Set(),
+  };
+
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('headerMeta').style.display = 'none';
+  document.getElementById('bugHuntScreen').style.display = 'block';
+  document.getElementById('logoTopic').textContent = 'run --bug-hunt';
+  document.getElementById('bugConsoleLog').innerHTML = '';
+  addBugConsoleLine('mission:started', 'pass');
+  addBugConsoleLine('tip: use Report bug when you find an issue');
+
+  document.getElementById('bugSearchInput').value = '';
+  document.getElementById('bugCategoryFilter').value = 'all';
+  document.getElementById('bugMaxPrice').value = '150';
+  document.getElementById('bugInStockOnly').checked = false;
+  document.getElementById('bugSortSelect').value = 'featured';
+
+  renderBugProducts();
+  renderBugCart();
+  renderBugFoundLog();
+  updateBugHuntHud();
+  startBugHuntTimer();
+  trackHit('mode/bug-hunt/start', 'Bug Hunt start');
+}
+
+function finishBugHunt(reason = 'session ended') {
+  if (!bugHuntState) return;
+  const found = bugHuntState.found.size;
+  const total = BUG_HUNT_BUGS.length;
+  const foundList = document.getElementById('bugResultFound');
+  lastBugHuntResult = { found, total, reason, finishedAt: new Date().toISOString() };
+  saveBugHuntStats(found, total);
+  resetBugHuntTimer();
+  addBugConsoleLine(`mission:finished ${reason}`, found >= 7 ? 'pass' : 'fail');
+  document.getElementById('bugReportModal').style.display = 'none';
+  document.getElementById('bugResultScore').textContent = `${found}/${total}`;
+  document.getElementById('bugResultReason').textContent = reason;
+  foundList.innerHTML = '';
+
+  BUG_HUNT_BUGS.forEach(bug => {
+    if (!bugHuntState.found.has(bug.id)) return;
+    const item = document.createElement('div');
+    item.className = 'bug-result-item found';
+    item.innerHTML = `<strong>${bug.category}</strong>${bug.title}`;
+    foundList.appendChild(item);
+  });
+
+  if (!foundList.children.length) foundList.innerHTML = '<div class="bug-cart-empty">No bugs found yet</div>';
+  document.getElementById('bugResultModal').style.display = 'flex';
+  trackHit('mode/bug-hunt/finish', 'Bug Hunt finish');
+}
+
 function getStats() {
   try {
     return JSON.parse(localStorage.getItem('qa_quiz_stats') || '{}');
@@ -1669,6 +2020,8 @@ function buildTopicCards() {
   const playedTopics = Object.keys(TOPICS).filter(k => stats[k] && stats[k].count > 0).length;
   const totalTopics = Object.keys(TOPICS).length;
   const mistakeCount = getMistakeCount();
+  const bugHuntStats = getBugHuntStats();
+  const bugHuntBest = bugHuntStats.count ? `best ${bugHuntStats.best || 0}/${BUG_HUNT_BUGS.length}` : `0/${BUG_HUNT_BUGS.length} bugs`;
 
   const wrapper = document.createElement('div');
   wrapper.className = 'dash-wrapper';
@@ -1697,8 +2050,29 @@ function buildTopicCards() {
   wrapper.appendChild(topBar);
 
   // ─── Main content ───
+  const content = document.createElement('div');
+  content.className = 'dash-content';
+
   const main = document.createElement('div');
   main.className = 'dash-main';
+
+  const bugHuntCard = document.createElement('aside');
+  bugHuntCard.className = 'dash-bug-card';
+  bugHuntCard.innerHTML = `
+    <div class="bug-card-glow"></div>
+    <div class="bug-card-topline">
+      <span class="bug-card-new">NEW</span>
+      <span>special mode</span>
+    </div>
+    <div class="bug-card-command"><span>▸</span> run --bug-hunt mission</div>
+    <div class="bug-card-title">Bug Hunt</div>
+    <div class="bug-card-copy">Find seeded bugs in a demo shop before time runs out.</div>
+    <div class="bug-card-meta">
+      <strong>10:00</strong>
+      <strong>${bugHuntBest}</strong>
+    </div>
+    <button class="bug-card-start" id="bugHuntStart">START MISSION →</button>
+  `;
 
   // ▸ run --mock full-suite
   const totalQuestions = Object.values(TOPICS).reduce((sum, t) => sum + t.bank.length, 0);
@@ -1779,8 +2153,13 @@ function buildTopicCards() {
   });
 
   main.appendChild(list);
-  wrapper.appendChild(main);
+
+  content.appendChild(main);
+  content.appendChild(bugHuntCard);
+  wrapper.appendChild(content);
   picker.appendChild(wrapper);
+
+  document.getElementById('bugHuntStart').addEventListener('click', startBugHunt);
 }
 
 // ─── Start Quiz ───────────────────────────────────
@@ -2060,6 +2439,11 @@ function getResultBadge(pct) {
 }
 
 function goHome() {
+  resetBugHuntTimer();
+  bugHuntState = null;
+  document.getElementById('bugHuntScreen').style.display = 'none';
+  document.getElementById('bugReportModal').style.display = 'none';
+  document.getElementById('bugResultModal').style.display = 'none';
   document.getElementById('resultsScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'none';
   document.getElementById('headerMeta').style.display = 'none';
@@ -2440,6 +2824,88 @@ async function createResultBadgeBlob(result) {
   });
 }
 
+async function createBugHuntBadgeBlob(result) {
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 630;
+  const ctx = canvas.getContext('2d');
+  const pct = Math.round((result.found / result.total) * 100);
+  const meta = getResultMeta(pct);
+  const colors = {
+    bg: '#0C0F14',
+    panel: '#12161D',
+    panel2: '#171C24',
+    border: '#333A46',
+    text: '#E4E1D8',
+    muted: '#9AA3B2',
+    accent: '#E8A33D',
+    pass: '#4FA872',
+    fail: '#D9645A',
+  };
+
+  ctx.fillStyle = colors.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = 'rgba(99, 107, 120, 0.18)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= canvas.width; x += 72) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvas.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= canvas.height; y += 72) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvas.width, y);
+    ctx.stroke();
+  }
+
+  roundedRect(ctx, 82, 64, 1036, 502, 16);
+  ctx.fillStyle = colors.panel;
+  ctx.fill();
+  ctx.strokeStyle = colors.border;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  drawText(ctx, 'QA Quiz', 126, 132, { size: 42, weight: 700, color: colors.accent });
+  drawText(ctx, 'BUG HUNT', 1074, 132, { size: 54, weight: 700, color: meta.pass ? colors.pass : colors.fail, align: 'right' });
+  drawText(ctx, 'qa@quiz:~$ run --bug-hunt', 126, 202, { size: 30, color: colors.text });
+
+  roundedRect(ctx, 126, 238, 948, 178, 10);
+  ctx.fillStyle = colors.panel2;
+  ctx.fill();
+  ctx.strokeStyle = meta.pass ? colors.pass : colors.fail;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  drawText(ctx, `${result.found}/${result.total}`, 168, 327, { size: 58, weight: 700, color: meta.pass ? colors.pass : colors.fail });
+  drawText(ctx, `${pct}%`, 594, 327, { size: 58, weight: 700, color: meta.pass ? colors.pass : colors.fail, align: 'center' });
+  drawText(ctx, `Grade ${meta.grade}`, 1034, 327, { size: 50, weight: 700, color: meta.pass ? colors.pass : colors.fail, align: 'right' });
+
+  drawText(ctx, `found: ${result.found}`, 168, 386, { size: 28, weight: 700, color: colors.pass });
+  drawText(ctx, `missed: ${result.total - result.found}`, 520, 386, { size: 28, weight: 700, color: result.total === result.found ? colors.pass : colors.fail });
+  drawText(ctx, `total: ${result.total}`, 1034, 386, { size: 28, weight: 700, color: colors.text, align: 'right' });
+
+  drawText(ctx, 'Share your bug hunting result', 126, 472, { size: 30, weight: 700, color: colors.accent });
+  drawText(ctx, 'Bug Hunt · 10 seeded bugs · demo shop', 126, 512, { size: 24, color: colors.text });
+
+  const qrMatrix = createQrCode(SHARE_BADGE_URL);
+  drawQrCode(ctx, qrMatrix, 963, 436, 3.135, 7.6);
+
+  drawText(ctx, 'No signup · Works offline', 126, 548, { size: 22, color: colors.muted });
+  drawText(ctx, 'yarikmuzyka.github.io/quiz', 868, 548, { size: 22, color: colors.muted, align: 'right' });
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Canvas export failed'));
+    }, 'image/png');
+  });
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2482,6 +2948,40 @@ async function shareResultBadge() {
   } finally {
     btn.disabled = false;
     label.textContent = originalLabel;
+  }
+}
+
+async function shareBugHuntBadge() {
+  if (!lastBugHuntResult || lastBugHuntResult.total === 0) return;
+
+  trackEvent('bug_hunt_badge_share_clicked');
+
+  const btn = document.getElementById('bugShareBadgeBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = t('shareBadgeBusy');
+
+  try {
+    const blob = await createBugHuntBadgeBlob(lastBugHuntResult);
+    const pct = Math.round((lastBugHuntResult.found / lastBugHuntResult.total) * 100);
+    const filename = `qa-quiz-bug-hunt-${lastBugHuntResult.found}-${lastBugHuntResult.total}.png`;
+    const file = new File([blob], filename, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      await navigator.share({
+        files: [file],
+        title: 'QA Quiz Bug Hunt',
+        text: `${lastBugHuntResult.found}/${lastBugHuntResult.total} bugs found · ${pct}%`,
+      });
+      trackEvent('bug_hunt_badge_shared');
+    } else {
+      downloadBlob(blob, filename);
+      trackEvent('bug_hunt_badge_downloaded');
+    }
+  } catch (error) {
+    if (error && error.name !== 'AbortError') console.error('Bug Hunt badge sharing failed', error);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 }
 
@@ -2577,6 +3077,34 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 
 document.getElementById('restartBtn').addEventListener('click', goHome);
 document.getElementById('shareBadgeBtn').addEventListener('click', shareResultBadge);
+
+document.getElementById('bugSearchInput').addEventListener('input', renderBugProducts);
+document.getElementById('bugCategoryFilter').addEventListener('change', renderBugProducts);
+document.getElementById('bugMaxPrice').addEventListener('input', renderBugProducts);
+document.getElementById('bugInStockOnly').addEventListener('change', renderBugProducts);
+document.getElementById('bugSortSelect').addEventListener('change', renderBugProducts);
+document.getElementById('bugReportTopBtn').addEventListener('click', openBugReportModal);
+document.getElementById('bugReportMainBtn').addEventListener('click', openBugReportModal);
+document.getElementById('bugReportClose').addEventListener('click', closeBugReportModal);
+document.getElementById('bugReportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bugReportModal')) closeBugReportModal();
+});
+document.getElementById('bugReportSubmit').addEventListener('click', submitBugReport);
+document.getElementById('bugEndBtn').addEventListener('click', () => finishBugHunt('manual stop'));
+document.getElementById('bugResultClose').addEventListener('click', closeBugResultModal);
+document.getElementById('bugShareBadgeBtn').addEventListener('click', shareBugHuntBadge);
+document.getElementById('bugRestartBtn').addEventListener('click', restartBugHunt);
+document.getElementById('bugResultHome').addEventListener('click', closeBugResultModal);
+document.getElementById('bugResultModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bugResultModal')) closeBugResultModal();
+});
+document.getElementById('bugCheckoutBtn').addEventListener('click', () => {
+  const empty = !bugHuntState || bugHuntState.cart.length === 0;
+  if (empty) {
+    console.error('Checkout failed: cannot start checkout with an empty cart');
+  }
+  addBugConsoleLine(empty ? 'checkout:started empty-cart' : 'checkout:started email-validation-skipped', empty ? 'fail' : 'pass');
+});
 
 // ─── Feedback Modal ───────────────────────────────
 (function () {
