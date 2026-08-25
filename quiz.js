@@ -1353,6 +1353,12 @@ const I18N = {
     shareCardCta: 'Поділись результатом підготовки',
     shareCardFoot: 'Без реєстрації · Працює офлайн',
     scanToTry: 'scan to try',
+    playwrightNotesKicker: 'partner resource',
+    playwrightNotesTitle: 'Playwright Notes',
+    playwrightNotesInlineText: 'Більше пояснень для підготовки до співбесіди.',
+    playwrightNotesResultTitle: 'Продовжити з Playwright Notes',
+    playwrightNotesResultText: 'Почитай глибші пояснення та підготуй follow-up відповіді.',
+    playwrightNotesOpen: 'OPEN NOTES →',
     msg100: label => `Ідеальний результат — ${label} від зубів відлітає!`,
     msg80: 'Відмінно, тема добре засвоєна.',
     msg60: 'Непогано, але є що повторити.',
@@ -1414,6 +1420,12 @@ const I18N = {
     shareCardCta: 'Share your interview prep result',
     shareCardFoot: 'No signup · Works offline',
     scanToTry: 'scan to try',
+    playwrightNotesKicker: 'partner resource',
+    playwrightNotesTitle: 'Playwright Notes',
+    playwrightNotesInlineText: 'Deeper explanations for interview prep.',
+    playwrightNotesResultTitle: 'Continue with Playwright Notes',
+    playwrightNotesResultText: 'Read deeper explanations and prepare follow-up answers.',
+    playwrightNotesOpen: 'OPEN NOTES →',
     msg100: label => `Perfect score — you know ${label} inside out!`,
     msg80: 'Excellent — this topic is well covered.',
     msg60: 'Not bad, but worth a review.',
@@ -1478,6 +1490,10 @@ function applyStaticI18n() {
   document.getElementById('feedbackSubmitBtn').textContent = t('fbSubmit');
   document.querySelector('#restartBtn span').textContent = t('chooseTopic');
   document.querySelector('#shareBadgeBtn span').textContent = t('shareBadge');
+  document.getElementById('playwrightResultKicker').textContent = t('playwrightNotesKicker');
+  document.getElementById('playwrightResultTitle').textContent = t('playwrightNotesResultTitle');
+  document.getElementById('playwrightResultText').textContent = t('playwrightNotesResultText');
+  document.getElementById('playwrightResultLink').textContent = t('playwrightNotesOpen');
   const finishBtn = document.getElementById('finishBtn');
   finishBtn.textContent = finishBtn.onclick ? t('home') : t('finish');
 }
@@ -1527,6 +1543,8 @@ function trackHit(path, title) {
 function trackEvent(name) {
   trackHit(`pwa/${name}`, `PWA: ${name}`);
 }
+
+const PLAYWRIGHT_NOTES_URL = 'https://iuliiaberezianska.github.io/playwright-notes/';
 
 function isStandalonePwa() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -2148,6 +2166,21 @@ function buildTopicCards() {
       `;
       row.addEventListener('click', () => openCountModal(key));
       section.appendChild(row);
+
+      if (key === 'playwright') {
+        const notesCta = document.createElement('div');
+        notesCta.className = 'spec-partner-cta';
+        notesCta.innerHTML = `
+          <div class="spec-partner-copy">
+            <span>${t('playwrightNotesKicker')}</span>
+            <strong>${t('playwrightNotesTitle')}</strong>
+            <em>${t('playwrightNotesInlineText')}</em>
+          </div>
+          <a href="${PLAYWRIGHT_NOTES_URL}" target="_blank" rel="noopener noreferrer">${t('playwrightNotesOpen')}</a>
+        `;
+        notesCta.querySelector('a').addEventListener('click', () => trackEvent('playwright_notes_home_clicked'));
+        section.appendChild(notesCta);
+      }
     });
 
     list.appendChild(section);
@@ -3052,6 +3085,7 @@ function showResults(finishedEarly) {
   shareBadgeBtn.disabled = false;
   shareBadgeBtn.style.display = done > 0 ? 'inline-flex' : 'none';
   shareBadgeBtn.querySelector('span').textContent = t('shareBadge');
+  document.getElementById('playwrightResultCta').style.display = currentTopic === 'playwright' && done > 0 ? 'grid' : 'none';
   saveStats(currentTopic, pct);
 
   if (done > 0) {
@@ -3078,6 +3112,7 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 
 document.getElementById('restartBtn').addEventListener('click', goHome);
 document.getElementById('shareBadgeBtn').addEventListener('click', shareResultBadge);
+document.getElementById('playwrightResultLink').addEventListener('click', () => trackEvent('playwright_notes_result_clicked'));
 
 document.getElementById('bugSearchInput').addEventListener('input', renderBugProducts);
 document.getElementById('bugCategoryFilter').addEventListener('change', renderBugProducts);
@@ -3169,6 +3204,10 @@ function refreshResultsLanguage() {
   if (lastResultPct === null) return;
   document.getElementById('resultMsg').textContent = resultMessage(lastResultPct);
   document.querySelector('#shareBadgeBtn span').textContent = t('shareBadge');
+  document.getElementById('playwrightResultKicker').textContent = t('playwrightNotesKicker');
+  document.getElementById('playwrightResultTitle').textContent = t('playwrightNotesResultTitle');
+  document.getElementById('playwrightResultText').textContent = t('playwrightNotesResultText');
+  document.getElementById('playwrightResultLink').textContent = t('playwrightNotesOpen');
   renderWrongList();
 }
 
