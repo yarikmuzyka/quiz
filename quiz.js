@@ -1544,6 +1544,41 @@ function trackEvent(name) {
   trackHit(`pwa/${name}`, `PWA: ${name}`);
 }
 
+function normalizeCampaignValue(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64);
+}
+
+function trackCampaignVisit() {
+  const params = new URLSearchParams(window.location.search);
+  const source = normalizeCampaignValue(params.get('utm_source') || '');
+  const medium = normalizeCampaignValue(params.get('utm_medium') || '');
+  const campaign = normalizeCampaignValue(params.get('utm_campaign') || '');
+
+  if (!source && !campaign) return;
+
+  const campaignSource = source || 'unknown';
+  const campaignName = campaign || 'unspecified';
+  const storageKey = `qa_quiz_campaign_${campaignSource}_${campaignName}`;
+
+  try {
+    if (sessionStorage.getItem(storageKey)) return;
+    sessionStorage.setItem(storageKey, '1');
+  } catch (_) {
+    // Tracking should still work when browser storage is unavailable.
+  }
+
+  const mediumLabel = medium || 'unspecified';
+  trackHit(
+    `campaign/${campaignSource}/${campaignName}`,
+    `Campaign: ${campaignSource} / ${mediumLabel} / ${campaignName}`
+  );
+}
+
 const PLAYWRIGHT_NOTES_URL = 'https://iuliiaberezianska.github.io/playwright-notes/';
 
 function isStandalonePwa() {
@@ -3225,3 +3260,4 @@ applyStaticI18n();
 buildTopicCards();
 renderTopicPicker();
 trackStandaloneOpen();
+trackCampaignVisit();
