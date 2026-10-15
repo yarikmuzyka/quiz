@@ -1287,6 +1287,10 @@ let wrongCount = 0;
 let answered = false;
 let selectedOptionBtn = null;
 let currentLabelMap = {};
+let challengeDraft = null;
+let activeChallenge = null;
+let challengeCreateMode = 'builder';
+let selectedChallengeCount = 10;
 const SPEC_NAMES = {
   selenide: 'selenide.spec',
   restassured: 'rest-assured.spec',
@@ -1382,6 +1386,32 @@ const I18N = {
     mockTopicsNext: 'Далі →',
     mockTopicsSummary: (selected, total, questions) => `${selected}/${total} тем · ${questions} питань доступно`,
     mockTopicsEmpty: 'Обери хоча б одну тему',
+    challengeActionTitle: 'Кинути виклик QA другу',
+    challengeActionSub: 'Однакові питання · порівняй результати',
+    challengeCreateTitle: 'Створити challenge',
+    challengeNickname: 'Твій nickname',
+    challengeTopics: 'Обери теми',
+    challengeCount: 'Кількість питань',
+    challengeSameQuestions: 'Друг отримає ті самі питання у тому самому порядку.',
+    challengeStart: 'ПОЧАТИ CHALLENGE →',
+    challengeLinkTitle: 'Challenge готовий',
+    challengeLinkLabel: 'Посилання на challenge',
+    challengeLinkHelper: 'Друг отримає точно такий самий набір питань.',
+    challengeCopy: 'СКОПІЮВАТИ ПОСИЛАННЯ',
+    challengeCopied: 'СКОПІЙОВАНО ✓',
+    challengeShare: 'ПОДІЛИТИСЯ',
+    challengeInviteTitle: 'QA друг кинув тобі виклик',
+    challengeInviteHelper: 'Його результат буде прихований до твого фінішу.',
+    challengeAccept: 'ПРИЙНЯТИ CHALLENGE →',
+    challengeResultAction: '$ challenge --friend',
+    challengeResultTitle: 'Ті самі питання. Різні результати.',
+    challengeNeedTopic: 'Обери хоча б одну тему',
+    challengeCorrect: (correct, total) => `${correct}/${total} правильних`,
+    challengeWinnerYou: diff => `Ти переміг · +${diff}%`,
+    challengeWinnerFriend: (name, diff) => `${name} переміг · +${diff}%`,
+    challengeDraw: 'Нічия',
+    challengeRematch: 'РЕВАНШ',
+    challengeShareResult: 'ПОДІЛИТИСЯ РЕЗУЛЬТАТОМ',
   },
   en: {
     bestScore: 'best score',
@@ -1449,6 +1479,32 @@ const I18N = {
     mockTopicsNext: 'Next →',
     mockTopicsSummary: (selected, total, questions) => `${selected}/${total} topics · ${questions} questions available`,
     mockTopicsEmpty: 'Choose at least one topic',
+    challengeActionTitle: 'Challenge a QA friend',
+    challengeActionSub: 'Same questions · compare results',
+    challengeCreateTitle: 'Create challenge',
+    challengeNickname: 'Your nickname',
+    challengeTopics: 'Choose topics',
+    challengeCount: 'Number of questions',
+    challengeSameQuestions: 'Your friend gets the exact same questions in the same order.',
+    challengeStart: 'START CHALLENGE →',
+    challengeLinkTitle: 'Challenge ready',
+    challengeLinkLabel: 'Challenge link',
+    challengeLinkHelper: 'Your friend gets the exact same set of questions.',
+    challengeCopy: 'COPY CHALLENGE LINK',
+    challengeCopied: 'COPIED ✓',
+    challengeShare: 'SHARE',
+    challengeInviteTitle: 'A QA friend challenged you',
+    challengeInviteHelper: 'Their score stays hidden until you finish.',
+    challengeAccept: 'ACCEPT CHALLENGE →',
+    challengeResultAction: '$ challenge --friend',
+    challengeResultTitle: 'Same questions. Different outcomes.',
+    challengeNeedTopic: 'Choose at least one topic',
+    challengeCorrect: (correct, total) => `${correct}/${total} correct`,
+    challengeWinnerYou: diff => `You win · +${diff}%`,
+    challengeWinnerFriend: (name, diff) => `${name} wins · +${diff}%`,
+    challengeDraw: 'Draw',
+    challengeRematch: 'REMATCH',
+    challengeShareResult: 'SHARE RESULT',
   },
 };
 
@@ -1494,6 +1550,24 @@ function applyStaticI18n() {
   document.getElementById('playwrightResultTitle').textContent = t('playwrightNotesResultTitle');
   document.getElementById('playwrightResultText').textContent = t('playwrightNotesResultText');
   document.getElementById('playwrightResultLink').textContent = t('playwrightNotesOpen');
+  document.querySelector('#challengeResultBtn span').textContent = t('challengeResultAction');
+  document.getElementById('challengeCreateTitle').textContent = t('challengeCreateTitle');
+  document.getElementById('challengeNicknameLabel').textContent = t('challengeNickname');
+  document.getElementById('challengeTopicsLabel').textContent = t('challengeTopics');
+  document.getElementById('challengeCountLabel').textContent = t('challengeCount');
+  document.getElementById('challengeSameQuestions').textContent = t('challengeSameQuestions');
+  document.getElementById('challengeCreateSubmit').textContent = t('challengeStart');
+  document.getElementById('challengeReadyTitle').textContent = t('challengeLinkTitle');
+  document.getElementById('challengeLinkLabel').textContent = t('challengeLinkLabel');
+  document.getElementById('challengeReadyHelper').textContent = t('challengeLinkHelper');
+  document.getElementById('challengeCopyLink').textContent = t('challengeCopy');
+  document.getElementById('challengeNativeShare').textContent = t('challengeShare');
+  document.getElementById('challengeInviteTitle').textContent = t('challengeInviteTitle');
+  document.getElementById('challengeInviteHelper').textContent = t('challengeInviteHelper');
+  document.getElementById('challengeAcceptBtn').textContent = t('challengeAccept');
+  document.getElementById('challengeComparisonTitle').textContent = t('challengeResultTitle');
+  document.getElementById('challengeRematchBtn').textContent = t('challengeRematch');
+  document.getElementById('challengeShareResultBtn').textContent = t('challengeShareResult');
   const finishBtn = document.getElementById('finishBtn');
   finishBtn.textContent = finishBtn.onclick ? t('home') : t('finish');
 }
@@ -2063,6 +2137,281 @@ function updateMistakeBank(topicKey, idx, isCorrect) {
   saveMistakes(mistakes);
 }
 
+// ─── Challenge a friend ───────────────────────────
+function encodeChallenge(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = '';
+  bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function decodeChallenge(value) {
+  try {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizeChallengeName(value) {
+  return (value || '').trim().replace(/\s+/g, ' ').slice(0, 24) || 'QA Challenger';
+}
+
+function getChallengeQuestionRefs(sourceQuestions = questions) {
+  return sourceQuestions
+    .filter(q => q && TOPICS[q._topicKey] && Number.isInteger(q._idx))
+    .map(q => [q._topicKey, q._idx]);
+}
+
+function resolveChallengeQuestions(refs) {
+  if (!Array.isArray(refs) || refs.length === 0 || refs.length > 100) return [];
+  return refs.map(ref => {
+    if (!Array.isArray(ref) || ref.length !== 2) return null;
+    const [topicKey, rawIndex] = ref;
+    const index = Number(rawIndex);
+    const topic = TOPICS[topicKey];
+    const q = topic && Number.isInteger(index) ? topic.bank[index] : null;
+    return q ? { ...q, _topic: topicMeta(topic, 'label'), _topicKey: topicKey, _idx: index } : null;
+  }).filter(Boolean);
+}
+
+function isValidChallenge(payload) {
+  if (!payload || payload.v !== 1 || !payload.r || !Number.isFinite(payload.r.p)) return false;
+  const resolved = resolveChallengeQuestions(payload.q);
+  return resolved.length > 0 && resolved.length === payload.q.length;
+}
+
+function challengeTopicLabels(refs) {
+  const keys = [...new Set((refs || []).map(ref => ref[0]).filter(key => TOPICS[key]))];
+  return keys.map(key => topicMeta(TOPICS[key], 'label'));
+}
+
+function renderChallengeTopicList() {
+  const list = document.getElementById('challengeTopicList');
+  list.innerHTML = '';
+  getAllTopicKeys().forEach(key => {
+    const label = document.createElement('label');
+    label.className = 'challenge-topic-option';
+    label.innerHTML = `<input type="checkbox" value="${key}"><span>${topicMeta(TOPICS[key], 'label')}</span>`;
+    list.appendChild(label);
+  });
+}
+
+function openChallengeBuilder() {
+  challengeCreateMode = 'builder';
+  selectedChallengeCount = 10;
+  document.getElementById('challengeBuilderOptions').style.display = 'block';
+  document.getElementById('challengeSourceSummary').style.display = 'none';
+  document.getElementById('challengeCreateError').textContent = '';
+  document.getElementById('challengeNickname').value = '';
+  document.querySelectorAll('.challenge-count').forEach(btn => btn.classList.toggle('active', btn.dataset.n === '10'));
+  renderChallengeTopicList();
+  document.getElementById('challengeCreateModal').style.display = 'flex';
+  trackEvent('challenge_builder_opened');
+}
+
+function openChallengeFromResult() {
+  if (!lastResult || lastResult.total < 1) return;
+  challengeCreateMode = 'result';
+  document.getElementById('challengeBuilderOptions').style.display = 'none';
+  const summary = document.getElementById('challengeSourceSummary');
+  summary.style.display = 'block';
+  summary.innerHTML = `<strong>${getResultTopicLabel(currentTopic)}</strong>${lastResult.total} questions · ${lastResult.pct}%`;
+  document.getElementById('challengeCreateError').textContent = '';
+  document.getElementById('challengeNickname').value = challengeDraft ? challengeDraft.creatorName : '';
+  document.getElementById('challengeCreateModal').style.display = 'flex';
+  trackEvent('challenge_result_opened');
+}
+
+function closeChallengeCreateModal() {
+  document.getElementById('challengeCreateModal').style.display = 'none';
+}
+
+function createChallengePayload() {
+  if (!lastResult || lastResult.total < 1) return null;
+  const attemptedQuestions = questions.slice(0, lastResult.total);
+  const refs = getChallengeQuestionRefs(attemptedQuestions);
+  if (refs.length !== attemptedQuestions.length) return null;
+  const topicKeys = [...new Set(refs.map(ref => ref[0]))];
+  return {
+    v: 1,
+    n: normalizeChallengeName(challengeDraft && challengeDraft.creatorName),
+    k: topicKeys.length === 1 ? topicKeys[0] : 'mock',
+    q: refs,
+    r: { p: lastResult.pct, c: lastResult.correct, t: lastResult.total },
+    at: Date.now(),
+  };
+}
+
+function buildChallengeUrl(payload) {
+  const baseUrl = window.location.protocol === 'file:'
+    ? 'https://yarikmuzyka.github.io/quiz/'
+    : window.location.href;
+  const url = new URL(baseUrl);
+  url.hash = `challenge=${encodeChallenge(payload)}`;
+  return url.toString();
+}
+
+function openChallengeReady() {
+  const payload = createChallengePayload();
+  if (!payload) return;
+  const labels = challengeTopicLabels(payload.q);
+  const link = buildChallengeUrl(payload);
+  document.getElementById('challengeReadySummary').innerHTML = `<strong>${labels.join(' + ')}</strong>${payload.q.length} questions · ${payload.r.p}% creator score`;
+  document.getElementById('challengeLink').value = link;
+  document.getElementById('challengeCopyLink').textContent = t('challengeCopy');
+  document.getElementById('challengeReadyModal').style.display = 'flex';
+  trackEvent('challenge_created');
+}
+
+async function copyChallengeLink() {
+  const input = document.getElementById('challengeLink');
+  try {
+    await navigator.clipboard.writeText(input.value);
+  } catch (_) {
+    input.focus();
+    input.select();
+    document.execCommand('copy');
+  }
+  document.getElementById('challengeCopyLink').textContent = t('challengeCopied');
+  trackEvent('challenge_link_copied');
+}
+
+async function shareChallengeLink() {
+  const url = document.getElementById('challengeLink').value;
+  const name = normalizeChallengeName(challengeDraft && challengeDraft.creatorName);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'QA Quiz challenge', text: `${name} challenged you to a QA Quiz.`, url });
+      trackEvent('challenge_link_shared');
+      return;
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+    }
+  }
+  await copyChallengeLink();
+}
+
+function startIncomingChallenge(payload) {
+  const exactQuestions = resolveChallengeQuestions(payload.q);
+  if (exactQuestions.length !== payload.q.length) return;
+  activeChallenge = payload;
+  challengeDraft = null;
+  currentTopic = payload.k === 'mock' || !TOPICS[payload.k] ? 'mock' : payload.k;
+  questions = exactQuestions;
+  wrongQuestions = [];
+  current = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  answered = false;
+  document.getElementById('challengeInviteModal').style.display = 'none';
+  document.getElementById('challengeComparison').style.display = 'none';
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'block';
+  document.getElementById('headerMeta').style.display = 'flex';
+  document.getElementById('logoTopic').textContent = 'run --challenge friend';
+  trackEvent('challenge_accepted');
+  renderQuestion();
+}
+
+function showIncomingChallenge(payload) {
+  activeChallenge = payload;
+  const labels = challengeTopicLabels(payload.q);
+  document.getElementById('challengeInviteName').textContent = `${normalizeChallengeName(payload.n)} challenged you`;
+  document.getElementById('challengeInviteMeta').textContent = `${labels.join(' + ')} · ${payload.q.length} questions · same order`;
+  document.getElementById('challengeInviteModal').style.display = 'flex';
+  trackEvent('challenge_invite_opened');
+}
+
+function loadChallengeFromUrl() {
+  const match = window.location.hash.match(/^#challenge=(.+)$/);
+  if (!match) return;
+  const payload = decodeChallenge(match[1]);
+  if (!isValidChallenge(payload)) return;
+  if (payload.f && Number.isFinite(payload.f.p)) showSharedChallengeResult(payload);
+  else showIncomingChallenge(payload);
+}
+
+function renderChallengeComparison(result, shouldTrack = true) {
+  if (!activeChallenge || !result) return;
+  const creator = activeChallenge.r;
+  const name = normalizeChallengeName(activeChallenge.n);
+  document.getElementById('challengeComparison').style.display = 'block';
+  document.getElementById('challengeCreatorName').textContent = name.toUpperCase();
+  document.getElementById('challengeCreatorPct').textContent = `${creator.p}%`;
+  document.getElementById('challengeCreatorCorrect').textContent = t('challengeCorrect', creator.c, creator.t);
+  document.getElementById('challengeFriendName').textContent = activeChallenge.f
+    ? (lang === 'uk' ? 'ДРУГ' : 'FRIEND')
+    : (lang === 'uk' ? 'ТИ' : 'YOU');
+  document.getElementById('challengeFriendPct').textContent = `${result.pct}%`;
+  document.getElementById('challengeFriendCorrect').textContent = t('challengeCorrect', result.correct, result.total);
+  const difference = Math.abs(result.pct - creator.p);
+  document.getElementById('challengeWinner').textContent = result.pct === creator.p
+    ? t('challengeDraw')
+    : result.pct > creator.p ? t('challengeWinnerYou', difference) : t('challengeWinnerFriend', name, difference);
+  if (shouldTrack) trackEvent('challenge_completed');
+}
+
+function showSharedChallengeResult(payload) {
+  activeChallenge = payload;
+  const result = {
+    topicKey: payload.k,
+    pct: payload.f.p,
+    correct: payload.f.c,
+    wrong: Math.max(0, payload.f.t - payload.f.c),
+    total: payload.f.t,
+    skipped: 0,
+  };
+  lastResult = result;
+  lastResultPct = result.pct;
+  currentTopic = payload.k === 'mock' || !TOPICS[payload.k] ? 'mock' : payload.k;
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('quizScreen').style.display = 'none';
+  document.getElementById('resultsScreen').style.display = 'flex';
+  document.getElementById('headerMeta').style.display = 'none';
+  document.getElementById('logoTopic').textContent = 'view --challenge-result';
+  document.getElementById('resultBadge').innerHTML = getResultBadge(result.pct);
+  document.getElementById('resultPercent').textContent = `${result.pct}%`;
+  document.getElementById('resultPercent').style.color = result.pct >= 75 ? 'var(--correct)' : 'var(--danger)';
+  document.getElementById('resultMsg').textContent = resultMessage(result.pct);
+  document.getElementById('resCorrect').textContent = result.correct;
+  document.getElementById('resWrong').textContent = result.wrong;
+  document.getElementById('resTotal').textContent = result.total;
+  document.getElementById('resSkipped').textContent = 0;
+  document.getElementById('shareBadgeBtn').style.display = 'none';
+  document.getElementById('challengeResultBtn').style.display = 'none';
+  document.getElementById('playwrightResultCta').style.display = 'none';
+  document.getElementById('wrongReview').style.display = 'none';
+  renderChallengeComparison(result, false);
+  trackEvent('challenge_result_viewed');
+}
+
+async function shareChallengeResult() {
+  if (!activeChallenge || !lastResult) return;
+  const name = normalizeChallengeName(activeChallenge.n);
+  const text = `QA Quiz challenge: ${name} ${activeChallenge.r.p}% vs ${lang === 'uk' ? 'я' : 'me'} ${lastResult.pct}%.`;
+  const resultUrl = buildChallengeUrl({
+    ...activeChallenge,
+    f: { p: lastResult.pct, c: lastResult.correct, t: lastResult.total },
+  });
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'QA Quiz challenge result', text, url: resultUrl });
+      trackEvent('challenge_result_shared');
+      return;
+    } catch (error) {
+      if (error && error.name === 'AbortError') return;
+    }
+  }
+  try { await navigator.clipboard.writeText(`${text} ${resultUrl}`); } catch (_) {}
+  trackEvent('challenge_result_copied');
+}
+
 function buildTopicCards() {
   const picker = document.getElementById('topicPicker');
   picker.innerHTML = '';
@@ -2141,6 +2490,19 @@ function buildTopicCards() {
   `;
   mockAction.addEventListener('click', () => openMockTopicsModal());
   main.appendChild(mockAction);
+
+  const challengeAction = document.createElement('button');
+  challengeAction.className = 'ci-action challenge-action';
+  challengeAction.innerHTML = `
+    <div class="cmd">
+      <div><span class="cmd-prompt">▸</span> run <span class="flag">--challenge</span> friend <span class="challenge-new-tag">new</span></div>
+      <div class="cmd-sub">${t('challengeActionSub')}</div>
+    </div>
+    <div class="go">CREATE →</div>
+  `;
+  challengeAction.setAttribute('aria-label', t('challengeActionTitle'));
+  challengeAction.addEventListener('click', openChallengeBuilder);
+  main.appendChild(challengeAction);
 
   // ▸ rerun --failed (mistake bank)
   if (mistakeCount > 0) {
@@ -2233,8 +2595,10 @@ function buildTopicCards() {
 
 // ─── Start Quiz ───────────────────────────────────
 function startQuiz(topicKey, count) {
+  activeChallenge = null;
   initQuiz(topicKey, count, _pendingMockTopics);
   _pendingMockTopics = null;
+  document.getElementById('challengeComparison').style.display = 'none';
   document.getElementById('startScreen').style.display = 'none';
   document.getElementById('quizScreen').style.display = 'block';
   document.getElementById('headerMeta').style.display = 'flex';
@@ -2522,6 +2886,12 @@ function goHome() {
   finishBtn.textContent = t('finish');
   lastResultPct = null;
   lastResult = null;
+  activeChallenge = null;
+  challengeDraft = null;
+  document.getElementById('challengeComparison').style.display = 'none';
+  if (window.location.hash.startsWith('#challenge=')) {
+    history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  }
   buildTopicCards();
   renderTopicPicker();
   document.getElementById('startScreen').style.display = 'flex';
@@ -3120,6 +3490,9 @@ function showResults(finishedEarly) {
   shareBadgeBtn.disabled = false;
   shareBadgeBtn.style.display = done > 0 ? 'inline-flex' : 'none';
   shareBadgeBtn.querySelector('span').textContent = t('shareBadge');
+  const challengeResultBtn = document.getElementById('challengeResultBtn');
+  challengeResultBtn.style.display = done > 0 && !activeChallenge ? 'inline-flex' : 'none';
+  challengeResultBtn.querySelector('span').textContent = t('challengeResultAction');
   document.getElementById('playwrightResultCta').style.display = currentTopic === 'playwright' && done > 0 ? 'grid' : 'none';
   saveStats(currentTopic, pct);
 
@@ -3128,6 +3501,7 @@ function showResults(finishedEarly) {
   }
 
   renderWrongList();
+  if (activeChallenge && done > 0) renderChallengeComparison(lastResult);
 }
 
 // ─── Event Listeners ──────────────────────────────
@@ -3147,7 +3521,64 @@ document.getElementById('finishBtn').addEventListener('click', () => {
 
 document.getElementById('restartBtn').addEventListener('click', goHome);
 document.getElementById('shareBadgeBtn').addEventListener('click', shareResultBadge);
+document.getElementById('challengeResultBtn').addEventListener('click', () => {
+  if (challengeDraft && challengeDraft.creatorName) openChallengeReady();
+  else openChallengeFromResult();
+});
 document.getElementById('playwrightResultLink').addEventListener('click', () => trackEvent('playwright_notes_result_clicked'));
+
+document.getElementById('challengeCreateClose').addEventListener('click', closeChallengeCreateModal);
+document.getElementById('challengeCreateModal').addEventListener('click', event => {
+  if (event.target === document.getElementById('challengeCreateModal')) closeChallengeCreateModal();
+});
+document.querySelectorAll('.challenge-count').forEach(button => {
+  button.addEventListener('click', () => {
+    selectedChallengeCount = Number(button.dataset.n);
+    document.querySelectorAll('.challenge-count').forEach(item => item.classList.toggle('active', item === button));
+  });
+});
+document.getElementById('challengeCreateSubmit').addEventListener('click', () => {
+  const creatorName = normalizeChallengeName(document.getElementById('challengeNickname').value);
+  if (challengeCreateMode === 'result') {
+    challengeDraft = { creatorName };
+    closeChallengeCreateModal();
+    openChallengeReady();
+    return;
+  }
+
+  const topicKeys = Array.from(document.querySelectorAll('#challengeTopicList input:checked')).map(input => input.value);
+  if (topicKeys.length === 0) {
+    document.getElementById('challengeCreateError').textContent = t('challengeNeedTopic');
+    return;
+  }
+  challengeDraft = { creatorName, topicKeys, count: selectedChallengeCount };
+  _pendingMockTopics = topicKeys;
+  closeChallengeCreateModal();
+  trackEvent('challenge_creator_started');
+  startQuiz('mock', selectedChallengeCount);
+});
+
+document.getElementById('challengeReadyClose').addEventListener('click', () => {
+  document.getElementById('challengeReadyModal').style.display = 'none';
+});
+document.getElementById('challengeReadyModal').addEventListener('click', event => {
+  if (event.target === document.getElementById('challengeReadyModal')) {
+    document.getElementById('challengeReadyModal').style.display = 'none';
+  }
+});
+document.getElementById('challengeCopyLink').addEventListener('click', copyChallengeLink);
+document.getElementById('challengeCopyIcon').addEventListener('click', copyChallengeLink);
+document.getElementById('challengeNativeShare').addEventListener('click', shareChallengeLink);
+document.getElementById('challengeInviteClose').addEventListener('click', () => {
+  document.getElementById('challengeInviteModal').style.display = 'none';
+});
+document.getElementById('challengeAcceptBtn').addEventListener('click', () => {
+  if (activeChallenge) startIncomingChallenge(activeChallenge);
+});
+document.getElementById('challengeRematchBtn').addEventListener('click', () => {
+  if (activeChallenge) startIncomingChallenge(activeChallenge);
+});
+document.getElementById('challengeShareResultBtn').addEventListener('click', shareChallengeResult);
 
 document.getElementById('bugSearchInput').addEventListener('input', renderBugProducts);
 document.getElementById('bugCategoryFilter').addEventListener('change', renderBugProducts);
@@ -3244,6 +3675,7 @@ function refreshResultsLanguage() {
   document.getElementById('playwrightResultText').textContent = t('playwrightNotesResultText');
   document.getElementById('playwrightResultLink').textContent = t('playwrightNotesOpen');
   renderWrongList();
+  if (activeChallenge) renderChallengeComparison(lastResult, false);
 }
 
 document.getElementById('langBtn').addEventListener('click', () => {
@@ -3261,3 +3693,4 @@ buildTopicCards();
 renderTopicPicker();
 trackStandaloneOpen();
 trackCampaignVisit();
+loadChallengeFromUrl();
