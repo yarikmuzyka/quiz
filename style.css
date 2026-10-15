@@ -1236,6 +1236,22 @@ html, body {
 .challenge-modal { max-width: 620px; }
 .challenge-modal .modal-header { align-items: flex-start; }
 .challenge-modal .modal-title { margin-top: 0.2rem; font-size: 1.05rem; }
+.challenge-modal .modal-body { gap: 0.65rem; }
+#challengeBuilderOptions { display: flex; flex-direction: column; gap: 0.65rem; }
+.challenge-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(8, 11, 16, 0.42);
+}
+.challenge-form-section .modal-label {
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
 
 .challenge-input {
   width: 100%;

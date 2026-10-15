@@ -333,15 +333,21 @@
         <button class="modal-close" id="challengeCreateClose">✕</button>
       </div>
       <div class="modal-body">
-        <label class="modal-label" for="challengeNickname" id="challengeNicknameLabel">Your nickname</label>
-        <input class="challenge-input" id="challengeNickname" maxlength="24" placeholder="QA Challenger">
+        <div class="challenge-form-section">
+          <label class="modal-label" for="challengeNickname" id="challengeNicknameLabel">Your nickname</label>
+          <input class="challenge-input" id="challengeNickname" maxlength="24" placeholder="QA Challenger">
+        </div>
         <div id="challengeBuilderOptions">
-          <div class="modal-label" id="challengeTopicsLabel">Choose topics</div>
-          <div class="challenge-topic-list" id="challengeTopicList"></div>
-          <div class="modal-label" id="challengeCountLabel">Number of questions</div>
-          <div class="challenge-count-options">
-            <button type="button" class="challenge-count active" data-n="10">10</button>
-            <button type="button" class="challenge-count" data-n="25">25</button>
+          <div class="challenge-form-section">
+            <div class="modal-label" id="challengeTopicsLabel">Choose topics</div>
+            <div class="challenge-topic-list" id="challengeTopicList"></div>
+          </div>
+          <div class="challenge-form-section">
+            <div class="modal-label" id="challengeCountLabel">Number of questions</div>
+            <div class="challenge-count-options">
+              <button type="button" class="challenge-count active" data-n="10">10</button>
+              <button type="button" class="challenge-count" data-n="25">25</button>
+            </div>
           </div>
           <div class="challenge-rule"><span>✓</span><span id="challengeSameQuestions">Your friend gets the exact same questions in the same order.</span></div>
         </div>
