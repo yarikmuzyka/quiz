@@ -189,7 +189,34 @@
         </div>
         <div class="result-actions">
           <button class="start-btn result-action-btn" id="shareBadgeBtn"><span>$ share --badge</span><span class="btn-arrow">⇩</span></button>
+          <button class="start-btn result-action-btn challenge-result-btn" id="challengeResultBtn"><span>$ challenge --friend</span><span class="btn-arrow">↗</span></button>
           <button class="start-btn result-action-btn" id="restartBtn"><span>Обрати тему</span><span class="btn-arrow">↩</span></button>
+        </div>
+        <div class="challenge-comparison" id="challengeComparison" style="display:none">
+          <div class="challenge-comparison-head">
+            <div>
+              <span class="challenge-kicker">challenge result</span>
+              <strong id="challengeComparisonTitle">Same questions. Different outcomes.</strong>
+            </div>
+            <span class="challenge-winner" id="challengeWinner"></span>
+          </div>
+          <div class="challenge-score-grid">
+            <div class="challenge-score challenge-score-creator">
+              <span id="challengeCreatorName">CHALLENGER</span>
+              <strong id="challengeCreatorPct">0%</strong>
+              <em id="challengeCreatorCorrect">0/0 correct</em>
+            </div>
+            <div class="challenge-vs">VS</div>
+            <div class="challenge-score challenge-score-friend">
+              <span id="challengeFriendName">YOU</span>
+              <strong id="challengeFriendPct">0%</strong>
+              <em id="challengeFriendCorrect">0/0 correct</em>
+            </div>
+          </div>
+          <div class="challenge-comparison-actions">
+            <button class="modal-submit secondary" id="challengeRematchBtn">REMATCH</button>
+            <button class="modal-submit" id="challengeShareResultBtn">SHARE RESULT</button>
+          </div>
         </div>
         <div class="partner-result-cta" id="playwrightResultCta" style="display:none">
           <div class="partner-cta-copy">
@@ -291,6 +318,86 @@
             <span class="count-opt-l">поглиблений</span>
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHALLENGE BUILDER MODAL -->
+  <div class="modal-overlay" id="challengeCreateModal" style="display:none">
+    <div class="modal challenge-modal">
+      <div class="modal-header">
+        <div>
+          <div class="challenge-kicker">$ challenge --friend</div>
+          <div class="modal-title" id="challengeCreateTitle">Create challenge</div>
+        </div>
+        <button class="modal-close" id="challengeCreateClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label" for="challengeNickname" id="challengeNicknameLabel">Your nickname</label>
+        <input class="challenge-input" id="challengeNickname" maxlength="24" placeholder="QA Challenger">
+        <div id="challengeBuilderOptions">
+          <div class="modal-label" id="challengeTopicsLabel">Choose topics</div>
+          <div class="challenge-topic-list" id="challengeTopicList"></div>
+          <div class="modal-label" id="challengeCountLabel">Number of questions</div>
+          <div class="challenge-count-options">
+            <button type="button" class="challenge-count active" data-n="10">10</button>
+            <button type="button" class="challenge-count" data-n="25">25</button>
+          </div>
+          <div class="challenge-rule"><span>✓</span><span id="challengeSameQuestions">Your friend gets the exact same questions in the same order.</span></div>
+        </div>
+        <div class="challenge-source-summary" id="challengeSourceSummary" style="display:none"></div>
+        <div class="challenge-error" id="challengeCreateError"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="challengeCreateSubmit">START CHALLENGE →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHALLENGE READY MODAL -->
+  <div class="modal-overlay" id="challengeReadyModal" style="display:none">
+    <div class="modal challenge-modal">
+      <div class="modal-header">
+        <div>
+          <div class="challenge-kicker">$ invite --friend</div>
+          <div class="modal-title" id="challengeReadyTitle">Challenge ready</div>
+        </div>
+        <button class="modal-close" id="challengeReadyClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="challenge-ready-summary" id="challengeReadySummary"></div>
+        <label class="modal-label" for="challengeLink" id="challengeLinkLabel">Challenge link</label>
+        <div class="challenge-link-row">
+          <input class="challenge-input" id="challengeLink" readonly>
+          <button type="button" class="challenge-copy-icon" id="challengeCopyIcon" title="Copy link">⧉</button>
+        </div>
+        <div class="challenge-helper" id="challengeReadyHelper">Your friend gets the exact same questions.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit secondary" id="challengeNativeShare">SHARE</button>
+        <button class="modal-submit" id="challengeCopyLink">COPY CHALLENGE LINK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOMING CHALLENGE MODAL -->
+  <div class="modal-overlay" id="challengeInviteModal" style="display:none">
+    <div class="modal challenge-modal challenge-invite-modal">
+      <div class="modal-header">
+        <div>
+          <div class="challenge-kicker">incoming challenge</div>
+          <div class="modal-title" id="challengeInviteTitle">A QA friend challenged you</div>
+        </div>
+        <button class="modal-close" id="challengeInviteClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="challenge-invite-command">▸ accept <span>--same-questions</span></div>
+        <div class="challenge-invite-name" id="challengeInviteName"></div>
+        <div class="challenge-invite-meta" id="challengeInviteMeta"></div>
+        <div class="challenge-helper" id="challengeInviteHelper">Their score stays hidden until you finish.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-submit" id="challengeAcceptBtn">ACCEPT CHALLENGE →</button>
       </div>
     </div>
   </div>
