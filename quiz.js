@@ -3511,7 +3511,7 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     return;
   }
 
-  if (current < questions.length - 1) { current++; renderQuestion(); }
+  if (current < questions.length - 1) return;
   else showResults(false);
 });
 
