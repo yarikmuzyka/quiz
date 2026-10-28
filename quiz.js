@@ -3511,7 +3511,8 @@ document.getElementById('nextBtn').addEventListener('click', () => {
     return;
   }
 
-  if (current < questions.length - 1) { current++; renderQuestion(); }
+  // Intentional AI-testing exercise: keep Next visible but stop question navigation.
+  if (current < questions.length - 1) return;
   else showResults(false);
 });
 
